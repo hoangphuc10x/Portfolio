@@ -6,7 +6,7 @@ export default function LanguageSwitcher({ className = "" }) {
 
   return (
     <div
-      className={`inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] p-1 ${className}`}
+      className={`inline-flex items-center rounded-full border border-[var(--color-line)] bg-[#fffdf9] p-1 ${className}`}
       role="group"
       aria-label="Language"
     >
@@ -21,11 +21,11 @@ export default function LanguageSwitcher({ className = "" }) {
             className={`relative px-3 py-1 rounded-full text-sm font-mono font-medium transition-colors ${
               active
                 ? "text-[#07070d]"
-                : "text-gray-400 hover:text-white"
+                : "text-gray-400 hover:text-black"
             }`}
           >
             {active && (
-              <span className="absolute inset-0 -z-10 rounded-full bg-gradient-to-r from-[var(--color-neon-cyan)] to-[var(--color-neon-purple)]" />
+              <span className="absolute inset-0 -z-10 rounded-full bg-[var(--color-accent)]" />
             )}
             {l.label}
           </button>

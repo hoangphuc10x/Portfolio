@@ -1,5 +1,9 @@
-// Ảnh bìa SVG theo chủ đề cho từng dự án (neon, khớp tông màu, không cần mạng).
+// Ảnh bìa SVG theo chủ đề cho từng dự án — tông sáng, đơn sắc (mực + terracotta).
 // Chọn graphic theo tên dự án (tên giống nhau ở mọi ngôn ngữ).
+
+const INK = "#1f1d1a";
+const ACCENT = "#1d5a8a";
+const MUTED = "#9c968a";
 
 function pickType(title = "") {
   const t = title.toLowerCase();
@@ -7,6 +11,8 @@ function pickType(title = "") {
   if (t.includes("localization") || t.includes("wordbee")) return "localization";
   if (t.includes("attendance")) return "attendance";
   if (t.includes("flight") || t.includes("booking")) return "flight";
+  if (t.includes("career") || t.includes("course") || t.includes("support")) return "course";
+  if (t.includes("order") || t.includes("restaurant") || t.includes("forder")) return "restaurant";
   return "solana";
 }
 
@@ -17,17 +23,11 @@ const svgProps = {
   "aria-hidden": "true",
 };
 
-function Bg({ id, from = "#0d1424", to = "#0a0a12" }) {
+function Bg() {
   return (
     <>
-      <defs>
-        <linearGradient id={`${id}-bg`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor={from} />
-          <stop offset="1" stopColor={to} />
-        </linearGradient>
-      </defs>
-      <rect width="400" height="180" fill={`url(#${id}-bg)`} />
-      <g stroke="rgba(255,255,255,0.04)" strokeWidth="1">
+      <rect width="400" height="180" fill="#f3f0e8" />
+      <g stroke="rgba(31,29,26,0.05)" strokeWidth="1">
         {[36, 72, 108, 144].map((y) => (
           <line key={y} x1="0" y1={y} x2="400" y2={y} />
         ))}
@@ -39,7 +39,7 @@ function Bg({ id, from = "#0d1424", to = "#0a0a12" }) {
   );
 }
 
-/* ---------- Solana: biểu đồ nến lên xuống + đồng SOL ---------- */
+/* ---------- Solana: biểu đồ nến lên xuống + đồng coin ---------- */
 function Solana() {
   const candles = [
     { x: 46, wt: 40, wb: 104, bt: 56, bb: 88, up: true },
@@ -51,41 +51,30 @@ function Solana() {
   ];
   return (
     <svg {...svgProps}>
-      <Bg id="sol" from="#101a2e" />
-      <defs>
-        <linearGradient id="sol-coin" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#9945FF" />
-          <stop offset="1" stopColor="#14F195" />
-        </linearGradient>
-        <linearGradient id="sol-trend" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#22d3ee" />
-          <stop offset="1" stopColor="#a855f7" />
-        </linearGradient>
-      </defs>
+      <Bg />
       {/* đường xu hướng mờ */}
       <polyline
         points="46,72 96,89 146,63 196,100 246,58 296,78"
-        fill="none" stroke="url(#sol-trend)" strokeWidth="2" strokeOpacity="0.5"
+        fill="none" stroke={ACCENT} strokeWidth="2" strokeOpacity="0.45"
         strokeDasharray="4 5" strokeLinecap="round"
       />
-      {/* nến */}
+      {/* nến: tăng = accent, giảm = mực nhạt */}
       {candles.map((c, i) => {
-        const col = c.up ? "#34d399" : "#fb7185";
+        const col = c.up ? ACCENT : INK;
         return (
           <g key={i}>
-            <line x1={c.x} y1={c.wt} x2={c.x} y2={c.wb} stroke={col} strokeWidth="2" />
+            <line x1={c.x} y1={c.wt} x2={c.x} y2={c.wb} stroke={col} strokeWidth="2" strokeOpacity={c.up ? 0.9 : 0.55} />
             <rect
               x={c.x - 8} y={c.bt} width="16" height={c.bb - c.bt}
-              rx="2" fill={col} fillOpacity="0.85"
+              rx="2" fill={col} fillOpacity={c.up ? 0.85 : 0.4}
             />
           </g>
         );
       })}
-      {/* đồng SOL (đặt ở dải giữa để không bị cắt trên card rộng) */}
+      {/* đồng coin */}
       <g>
-        <circle cx="348" cy="90" r="26" fill="url(#sol-coin)" />
-        <circle cx="348" cy="90" r="26" fill="none" stroke="#fff" strokeOpacity="0.25" />
-        <g fill="#fff">
+        <circle cx="348" cy="90" r="26" fill={ACCENT} />
+        <g fill="#faf9f6">
           <path d="M337,80 H363 L357,86 H331 Z" />
           <path d="M337,88 H363 L357,94 H331 Z" />
           <path d="M337,96 H363 L357,102 H331 Z" />
@@ -98,21 +87,15 @@ function Solana() {
 /* ---------- Localization: quả địa cầu + ngôn ngữ ---------- */
 function Localization() {
   const bubbles = [
-    { x: 250, y: 62, t: "A", c: "#22d3ee" },
-    { x: 318, y: 90, t: "文", c: "#a855f7" },
-    { x: 250, y: 118, t: "あ", c: "#ec4899" },
+    { x: 250, y: 62, t: "A" },
+    { x: 318, y: 90, t: "文" },
+    { x: 250, y: 118, t: "あ" },
   ];
   return (
     <svg {...svgProps}>
-      <Bg id="loc" from="#0d1726" />
-      <defs>
-        <linearGradient id="loc-globe" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#22d3ee" />
-          <stop offset="1" stopColor="#a855f7" />
-        </linearGradient>
-      </defs>
+      <Bg />
       {/* địa cầu */}
-      <g transform="translate(118,90)" fill="none" stroke="url(#loc-globe)" strokeWidth="2">
+      <g transform="translate(118,90)" fill="none" stroke={INK} strokeWidth="2" strokeOpacity="0.8">
         <circle r="58" />
         <ellipse rx="58" ry="22" />
         <ellipse rx="58" ry="42" />
@@ -124,7 +107,7 @@ function Localization() {
       {bubbles.map((b, i) => (
         <line
           key={`l${i}`} x1="176" y1="90" x2={b.x} y2={b.y}
-          stroke={b.c} strokeWidth="1.5" strokeOpacity="0.4" strokeDasharray="3 5"
+          stroke={ACCENT} strokeWidth="1.5" strokeOpacity="0.4" strokeDasharray="3 5"
         />
       ))}
       {/* bong bóng glyph */}
@@ -132,11 +115,11 @@ function Localization() {
         <g key={`b${i}`}>
           <rect
             x={b.x - 20} y={b.y - 18} width="40" height="36" rx="11"
-            fill="#0a0a12" stroke={b.c} strokeWidth="2"
+            fill="#fffdf9" stroke={ACCENT} strokeWidth="2"
           />
           <text
             x={b.x} y={b.y + 7} textAnchor="middle"
-            fontSize="20" fontWeight="700" fill={b.c}
+            fontSize="20" fontWeight="700" fill={ACCENT}
             fontFamily="'Space Grotesk', sans-serif"
           >
             {b.t}
@@ -151,19 +134,13 @@ function Localization() {
 function Attendance() {
   return (
     <svg {...svgProps}>
-      <Bg id="att" from="#101522" />
-      <defs>
-        <linearGradient id="att-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#22d3ee" />
-          <stop offset="1" stopColor="#a855f7" />
-        </linearGradient>
-      </defs>
+      <Bg />
       {/* lịch */}
       <g>
-        <rect x="40" y="40" width="150" height="110" rx="12" fill="#0a0a12" stroke="url(#att-g)" strokeWidth="2" />
-        <rect x="40" y="40" width="150" height="26" rx="12" fill="url(#att-g)" fillOpacity="0.18" />
-        <line x1="68" y1="34" x2="68" y2="50" stroke="#22d3ee" strokeWidth="4" strokeLinecap="round" />
-        <line x1="162" y1="34" x2="162" y2="50" stroke="#ec4899" strokeWidth="4" strokeLinecap="round" />
+        <rect x="40" y="40" width="150" height="110" rx="12" fill="#fffdf9" stroke={INK} strokeWidth="2" strokeOpacity="0.8" />
+        <rect x="40" y="40" width="150" height="26" rx="12" fill={ACCENT} fillOpacity="0.14" />
+        <line x1="68" y1="34" x2="68" y2="50" stroke={INK} strokeWidth="4" strokeLinecap="round" />
+        <line x1="162" y1="34" x2="162" y2="50" stroke={INK} strokeWidth="4" strokeLinecap="round" />
         {/* các ô ngày */}
         {[0, 1, 2, 3].map((r) =>
           [0, 1, 2, 3].map((c) => {
@@ -172,28 +149,24 @@ function Attendance() {
             const checked = r === 1 && c === 2;
             return checked ? (
               <g key={`${r}-${c}`}>
-                <circle cx={cx} cy={cy} r="9" fill="url(#att-g)" />
+                <circle cx={cx} cy={cy} r="9" fill={ACCENT} />
                 <path
                   d={`M${cx - 4},${cy} l3,3 l5,-6`}
-                  fill="none" stroke="#0a0a12" strokeWidth="2.2"
+                  fill="none" stroke="#fffdf9" strokeWidth="2.2"
                   strokeLinecap="round" strokeLinejoin="round"
                 />
               </g>
             ) : (
-              <circle key={`${r}-${c}`} cx={cx} cy={cy} r="5" fill="rgba(255,255,255,0.18)" />
+              <circle key={`${r}-${c}`} cx={cx} cy={cy} r="5" fill="rgba(31,29,26,0.18)" />
             );
           })
         )}
       </g>
       {/* nhân sự */}
-      {[
-        { x: 250, c: "#22d3ee" },
-        { x: 300, c: "#a855f7" },
-        { x: 350, c: "#ec4899" },
-      ].map((p, i) => (
-        <g key={i} fill="none" stroke={p.c} strokeWidth="3">
-          <circle cx={p.x} cy="78" r="14" />
-          <path d={`M${p.x - 22},132 a22 24 0 0 1 44 0`} />
+      {[250, 300, 350].map((x, i) => (
+        <g key={i} fill="none" stroke={i === 1 ? ACCENT : INK} strokeOpacity={i === 1 ? 1 : 0.7} strokeWidth="3">
+          <circle cx={x} cy="78" r="14" />
+          <path d={`M${x - 22},132 a22 24 0 0 1 44 0`} />
         </g>
       ))}
     </svg>
@@ -204,42 +177,104 @@ function Attendance() {
 function Flight() {
   return (
     <svg {...svgProps}>
-      <Bg id="fly" from="#0c1626" />
-      <defs>
-        <linearGradient id="fly-g" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#22d3ee" />
-          <stop offset="1" stopColor="#ec4899" />
-        </linearGradient>
-      </defs>
+      <Bg />
       {/* đường bay cong */}
       <path
         d="M52,140 Q200,10 348,120"
-        fill="none" stroke="url(#fly-g)" strokeWidth="2.5"
+        fill="none" stroke={ACCENT} strokeWidth="2.5"
         strokeDasharray="2 8" strokeLinecap="round"
       />
       {/* ghim điểm đi / đến */}
       {[
-        { x: 52, y: 140, c: "#22d3ee" },
-        { x: 348, y: 120, c: "#ec4899" },
+        { x: 52, y: 140 },
+        { x: 348, y: 120 },
       ].map((p, i) => (
         <g key={i} transform={`translate(${p.x - 11},${p.y - 26})`}>
           <path
             d="M11,1 a9 9 0 0 0-9 9 c0 6 9 16 9 16 s9-10 9-16 a9 9 0 0 0-9-9 z"
-            fill="#0a0a12" stroke={p.c} strokeWidth="2"
+            fill="#fffdf9" stroke={ACCENT} strokeWidth="2"
           />
-          <circle cx="11" cy="10" r="3.5" fill={p.c} />
+          <circle cx="11" cy="10" r="3.5" fill={ACCENT} />
         </g>
       ))}
-      {/* máy bay ở dải giữa đường bay (tránh bị cắt trên card rộng) */}
-      <g transform="translate(176,72) rotate(20) scale(1.9)" fill="url(#fly-g)">
+      {/* máy bay ở dải giữa đường bay */}
+      <g transform="translate(176,72) rotate(20) scale(1.9)" fill={INK}>
         <path d="M2 16 L24 9 L2 2 L2 7.5 L15 9 L2 10.5 Z" />
       </g>
-      {/* mây/điểm trang trí */}
-      <g fill="rgba(255,255,255,0.12)">
+      {/* điểm trang trí */}
+      <g fill="rgba(31,29,26,0.14)">
         <circle cx="120" cy="60" r="3" />
         <circle cx="270" cy="56" r="2.5" />
         <circle cx="300" cy="150" r="3" />
         <circle cx="90" cy="120" r="2.5" />
+      </g>
+    </svg>
+  );
+}
+
+/* ---------- Course / Career: sách mở + nút play khoá học online ---------- */
+function Course() {
+  return (
+    <svg {...svgProps}>
+      <Bg />
+      {/* sách mở */}
+      <g transform="translate(70,58)" stroke={INK} strokeWidth="2" strokeOpacity="0.85">
+        <path d="M0,4 C30,-8 60,-8 90,4 V64 C60,52 30,52 0,64 Z" fill="#fffdf9" />
+        <line x1="45" y1="-2" x2="45" y2="58" />
+        <g stroke={ACCENT} strokeOpacity="0.55" strokeWidth="2">
+          <line x1="12" y1="18" x2="38" y2="13" />
+          <line x1="12" y1="30" x2="38" y2="25" />
+          <line x1="12" y1="42" x2="34" y2="38" />
+          <line x1="52" y1="13" x2="78" y2="18" />
+          <line x1="52" y1="25" x2="78" y2="30" />
+          <line x1="52" y1="38" x2="74" y2="42" />
+        </g>
+      </g>
+      {/* mũ tốt nghiệp nhỏ */}
+      <g transform="translate(115,34)">
+        <polygon points="0,0 34,11 0,22 -34,11" fill={INK} fillOpacity="0.85" />
+        <line x1="34" y1="11" x2="34" y2="26" stroke={INK} strokeWidth="1.5" strokeOpacity="0.7" />
+        <circle cx="34" cy="28" r="3" fill={ACCENT} />
+      </g>
+      {/* nút play (khoá học online) */}
+      <g transform="translate(308,90)">
+        <circle r="34" fill={ACCENT} />
+        <path d="M-10,-16 L18,0 L-10,16 Z" fill="#faf9f6" />
+      </g>
+    </svg>
+  );
+}
+
+/* ---------- Restaurant / F-ORDER: đĩa ăn + dao nĩa + chuông gọi món ---------- */
+function Restaurant() {
+  return (
+    <svg {...svgProps}>
+      <Bg />
+      {/* nĩa */}
+      <g stroke={INK} strokeWidth="3" strokeOpacity="0.85" strokeLinecap="round" fill="none">
+        <line x1="58" y1="46" x2="58" y2="66" />
+        <line x1="66" y1="46" x2="66" y2="66" />
+        <line x1="74" y1="46" x2="74" y2="66" />
+        <path d="M58,66 H74" />
+        <line x1="66" y1="66" x2="66" y2="132" />
+      </g>
+      {/* đĩa */}
+      <g transform="translate(150,92)">
+        <circle r="56" fill="#fffdf9" stroke={INK} strokeWidth="2" strokeOpacity="0.8" />
+        <circle r="40" fill="none" stroke={INK} strokeOpacity="0.18" strokeWidth="1.5" />
+        <circle r="22" fill={ACCENT} fillOpacity="0.9" />
+      </g>
+      {/* dao */}
+      <g stroke={INK} strokeWidth="3" strokeOpacity="0.85" strokeLinecap="round" fill="none">
+        <path d="M236,46 q9,16 0,34" />
+        <line x1="236" y1="80" x2="236" y2="132" />
+      </g>
+      {/* chuông gọi món */}
+      <g transform="translate(322,98)">
+        <path d="M-26,16 h52 a4 4 0 0 1 0 8 h-52 a4 4 0 0 1 0-8 Z" fill={ACCENT} />
+        <path d="M-22,16 a22 22 0 0 1 44 0 Z" fill="#fffdf9" stroke={INK} strokeWidth="2" strokeOpacity="0.8" />
+        <line x1="0" y1="-6" x2="0" y2="-12" stroke={INK} strokeWidth="2" strokeLinecap="round" />
+        <circle cx="0" cy="-14" r="3" fill={ACCENT} />
       </g>
     </svg>
   );
@@ -250,6 +285,8 @@ const COVERS = {
   localization: Localization,
   attendance: Attendance,
   flight: Flight,
+  course: Course,
+  restaurant: Restaurant,
 };
 
 export default function ProjectCover({ title }) {

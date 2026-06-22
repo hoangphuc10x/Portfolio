@@ -29,21 +29,23 @@ export default function Hero() {
       className="relative min-h-screen flex flex-col justify-center px-6 pt-28 pb-16"
     >
       <div className="mx-auto max-w-6xl w-full">
-        <p className="hero-eyebrow font-mono text-sm text-[var(--color-neon-cyan)] mb-5">
-          <span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-2 align-middle animate-pulse" />
+        <p className="hero-eyebrow font-mono text-sm uppercase tracking-widest text-[var(--color-accent)] mb-5">
+          <span className="inline-block w-2 h-2 rounded-full bg-[var(--color-accent)] mr-2 align-middle animate-pulse" />
           {t.profile.availability} · {t.profile.location}
         </p>
 
         <h1 className="hero-title font-display font-bold leading-[1.12] text-5xl sm:text-7xl lg:text-8xl tracking-tight">
-          <span className="block text-white pb-1">{t.ui.hero.greeting}</span>
-          <span className="block gradient-text pb-2">{t.profile.name}.</span>
+          <span className="block text-[var(--color-ink)] pb-1">{t.ui.hero.greeting}</span>
+          <span className="block text-[var(--color-ink)] pb-2">
+            {t.profile.name}<span className="accent-text">.</span>
+          </span>
         </h1>
 
-        <div className="hero-role mt-6 font-mono text-xl sm:text-2xl text-gray-200">
+        <div className="hero-role mt-6 font-mono text-xl sm:text-2xl text-[var(--color-ink-soft)]">
           <Typewriter key={`${t.profile.roles.join()}`} words={t.profile.roles} />
         </div>
 
-        <p className="hero-tagline mt-6 max-w-2xl text-lg text-gray-400 leading-relaxed">
+        <p className="hero-tagline mt-6 max-w-2xl text-lg text-[var(--color-muted)] leading-relaxed">
           {t.profile.tagline}
         </p>
 
@@ -51,7 +53,7 @@ export default function Hero() {
           <Magnetic className="hero-cta">
             <a
               href="#projects"
-              className="btn-neon inline-flex rounded-full px-7 py-3 font-semibold text-[#07070d]"
+              className="btn-primary inline-flex rounded-full px-7 py-3 font-semibold"
             >
               {t.ui.hero.viewProjects}
             </a>
@@ -59,7 +61,7 @@ export default function Hero() {
           <Magnetic className="hero-cta">
             <a
               href="#contact"
-              className="inline-flex rounded-full px-7 py-3 font-semibold text-white glass glass-hover"
+              className="inline-flex rounded-full px-7 py-3 font-semibold text-[var(--color-ink)] border border-[var(--color-ink)]/20 hover:border-[var(--color-ink)]/50 transition-colors"
             >
               {t.ui.hero.contactMe}
             </a>
@@ -70,7 +72,7 @@ export default function Hero() {
                 href={t.profile.resumeUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex rounded-full px-7 py-3 font-semibold text-gray-300 hover:text-white transition-colors"
+                className="inline-flex rounded-full px-7 py-3 font-semibold text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors"
               >
                 {t.ui.hero.downloadCv}
               </a>
@@ -85,21 +87,13 @@ export default function Hero() {
           {[...allSkills, ...allSkills].map((s, idx) => (
             <span
               key={idx}
-              className="font-mono text-sm text-gray-400 px-4 py-2 rounded-full border border-white/10 whitespace-nowrap"
+              className="font-mono text-sm text-[var(--color-muted)] px-4 py-2 rounded-full border border-[var(--color-line)] bg-[#fffdf9] whitespace-nowrap"
             >
               {s}
             </span>
           ))}
         </div>
       </div>
-
-      <a
-        href="#about"
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 text-gray-500 text-xs font-mono flex flex-col items-center gap-2 hover:text-white transition-colors"
-      >
-        {t.ui.hero.scroll}
-        <span className="block w-px h-8 bg-gradient-to-b from-[var(--color-neon-cyan)] to-transparent" />
-      </a>
     </section>
   );
 }

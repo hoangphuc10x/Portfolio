@@ -29,19 +29,18 @@ export default function Navbar() {
       <ScrollProgress />
       <header
         className={`fixed top-0 inset-x-0 z-40 transition-all duration-500 ${
-          scrolled ? "py-3 backdrop-blur-xl bg-[#07070d]/70 border-b border-white/5" : "py-5"
+          scrolled ? "py-3 backdrop-blur-md bg-[var(--color-bg)]/80 border-b border-[var(--color-line)]" : "py-5"
         }`}
       >
         <nav className="mx-auto max-w-6xl px-6 flex items-center justify-between gap-4">
           <a href="#top" className="flex items-center gap-2 font-display font-bold text-lg tracking-tight shrink-0">
-            <Logo size={32} className="drop-shadow-[0_0_8px_rgba(34,211,238,0.35)]" />
+            <Logo size={32} />
             <span>
-              <span className="gradient-text">Phúc</span>
-              <span className="text-white">.dev</span>
+              <span className="accent-text">Hoang Phuc</span>
             </span>
           </a>
 
-          <ul className="hidden md:flex items-center gap-8 text-sm text-gray-300">
+          <ul className="hidden md:flex items-center gap-8 text-sm text-[var(--color-muted)]">
             {links.map((l) => (
               <li key={l.href}>
                 <a href={l.href} className="nav-link">
@@ -55,12 +54,12 @@ export default function Navbar() {
             <LanguageSwitcher />
             <a
               href="#contact"
-              className="hidden md:inline-flex btn-neon rounded-full px-5 py-2 text-sm font-semibold text-[#07070d]"
+              className="hidden md:inline-flex btn-primary rounded-full px-5 py-2 text-sm font-semibold"
             >
               {t.ui.nav.cta}
             </a>
             <button
-              className="md:hidden text-2xl text-white"
+              className="md:hidden text-2xl text-[var(--color-ink)]"
               onClick={() => setOpen((v) => !v)}
               aria-label="Menu"
             >
@@ -70,13 +69,13 @@ export default function Navbar() {
         </nav>
 
         {open && (
-          <div className="md:hidden mx-6 mt-3 glass p-4 flex flex-col gap-3 text-sm">
+          <div className="md:hidden mx-6 mt-3 card p-4 flex flex-col gap-3 text-sm">
             {links.map((l) => (
               <a
                 key={l.href}
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className="py-1 text-gray-300 hover:text-white"
+                className="py-1 text-[var(--color-muted)] hover:text-[var(--color-ink)]"
               >
                 {l.label}
               </a>

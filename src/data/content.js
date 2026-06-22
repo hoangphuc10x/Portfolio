@@ -38,6 +38,8 @@ const projectTags = {
   wordbee: [".NET", "ASP.NET Core", "ReactJS", "TypeScript", "SQL Server", "Claude AI"],
   attendance: ["NestJS", "MySQL", "TypeORM", "JWT", "Redis"],
   flight: ["React.js", "Node.js", "Express", "REST API"],
+  career: ["React", "Node.js", "Express", "MongoDB", "REST API"],
+  forder: ["React", "Node.js", "Express", "MongoDB", "Socket.IO", "JWT"],
 };
 
 const stacks = {
@@ -45,6 +47,8 @@ const stacks = {
   wordbee: ".NET, ASP.NET Core, ReactJS, TypeScript, SQL Server, Unity, Unreal Engine, Google Sheets API, Claude AI",
   aiot: "TypeScript, Node.js, NestJS, Express, React/Next.js, TailwindCSS, MySQL, Redis",
   sbay: "React.js, Node.js, Express, REST API",
+  forder: "Node.js, Express, MongoDB, React, Socket.IO, JWT, REST API",
+  career: "React, Node.js, Express, MongoDB, REST API",
 };
 
 const periods = {
@@ -52,6 +56,8 @@ const periods = {
   aiot: "6/2025 — 12/2025",
   solana: "1/2026 — 3/2026",
   sbay: "2/2025 — 5/2025",
+  forder: "9/2024 — 12/2024", // 👈 mốc tạm — sửa lại cho đúng
+  career: "3/2024 — 6/2024",  // 👈 mốc tạm — sửa lại cho đúng
 };
 
 // ============================================================================
@@ -90,25 +96,37 @@ const vi = {
       title: "Solana Token Swap Service",
       description:
         "Dịch vụ token swap hiệu năng cao trên Solana dùng Raydium SDK v2, hỗ trợ đồng thời AMM, CPMM và CLMM qua một kiến trúc swap thống nhất. Xử lý trọn vòng đời giao dịch: wrap SOL/WSOL, ATA, ký và theo dõi xác nhận on-chain, kèm trading đa ví song song bằng BullMQ.",
-      tags: projectTags.solana, link: "", repo: "", featured: true,
+      tags: projectTags.solana, link: "https://raydium.io/swap/?inputMint=sol&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", repo: "", featured: true,
     },
     {
       title: "Wordbee Localization Platform",
       description:
         "Tính năng cho nền tảng quản lý dịch thuật & tự động hoá quy trình: backend .NET, frontend ReactJS, RESTful API. Tích hợp Unity, Unreal Engine và Google Sheets API để đồng bộ dữ liệu tự động cho pipeline sản xuất nội dung, tận dụng Claude AI để tăng tốc phát triển.",
-      tags: projectTags.wordbee, link: "", repo: "", featured: true,
+      tags: projectTags.wordbee, link: "https://www.wordbee.com", repo: "", featured: true,
     },
     {
       title: "Attendance Management System",
       description:
         "Hệ thống chấm công với xác thực, phân quyền theo vai trò (RBAC), quản lý đơn nghỉ phép và dashboard quản trị. Xây trên NestJS + MySQL + TypeORM, bảo mật bằng JWT và tối ưu bằng Redis, tuân thủ chuẩn RESTful API.",
-      tags: projectTags.attendance, link: "", repo: "", featured: false,
+      tags: projectTags.attendance, link: "https://hr-aiot-managerment.vercel.app/", repo: "", featured: false,
     },
     {
       title: "Flight Ticket Booking Website",
       description:
         "Website đặt vé máy bay với frontend React.js và backend Node.js (Express). Tích hợp API của Bamboo Airways để lấy lịch bay, giá vé và xử lý đặt chỗ; xây RESTful API kèm kiểm tra dữ liệu và bộ test case cho các luồng chính.",
-      tags: projectTags.flight, link: "", repo: "", featured: false,
+      tags: projectTags.flight, link: "https://flight.sbaygroup.com/", repo: "", featured: false,
+    },
+    {
+      title: "F-ORDER — Restaurant Order Management",
+      description:
+        "Đồ án Capstone 2 — nền tảng quản lý gọi món nhà hàng full-stack dựng bằng Node.js, Express, MongoDB, React và Socket.IO. Theo dõi đơn hàng thời gian thực, phân quyền theo vai trò, quản lý sản phẩm/khách hàng và dashboard phân tích; REST API, xác thực JWT và thông báo qua WebSocket, tối ưu hiệu năng cơ sở dữ liệu.",
+      tags: projectTags.forder, link: "https://order-management-amber-seven.vercel.app/", repo: "", featured: false,
+    },
+    {
+      title: "Career Support System",
+      description:
+        "Đồ án Capstone 1 — nền tảng web nơi gia sư tạo và đăng khoá học, học viên đăng ký, thanh toán và học trực tuyến. Bao quát quản lý khoá học, luồng thanh toán và toàn bộ trải nghiệm truy cập – học tập.",
+      tags: projectTags.career, link: "", repo: "", featured: false,
     },
   ],
   experience: [
@@ -145,6 +163,22 @@ const vi = {
         "Phát triển website đặt vé máy bay với frontend React.js và backend Node.js (Express).",
         "Tích hợp API Bamboo Airways để lấy lịch bay, giá vé và xử lý đặt chỗ.",
         "Xây RESTful API, kiểm tra dữ liệu và thiết kế test case cho các tính năng chính.",
+      ],
+    },
+    {
+      role: "Lập trình viên Fullstack (Đồ án Capstone 2)", company: "F-ORDER", period: periods.forder, stack: stacks.forder,
+      points: [
+        "Xây nền tảng quản lý gọi món nhà hàng full-stack với Node.js, Express, MongoDB, React và Socket.IO.",
+        "Triển khai theo dõi đơn hàng thời gian thực, phân quyền theo vai trò, quản lý sản phẩm/khách hàng và dashboard phân tích.",
+        "Phát triển REST API, xác thực JWT, thông báo qua WebSocket và tối ưu hiệu năng cơ sở dữ liệu.",
+      ],
+    },
+    {
+      role: "Lập trình viên Fullstack (Đồ án Capstone 1)", company: "Career Support System", period: periods.career, stack: stacks.career,
+      points: [
+        "Xây nền tảng web cho phép gia sư tạo và đăng khoá học, học viên đăng ký – thanh toán – học trực tuyến.",
+        "Phát triển frontend React và backend Node.js/Express, thiết kế RESTful API trên MongoDB.",
+        "Triển khai luồng thanh toán và quản lý quyền truy cập khoá học theo trạng thái mua.",
       ],
     },
   ],
@@ -202,13 +236,13 @@ const en = {
       title: "Solana Token Swap Service",
       description:
         "A high-performance token swap service on Solana built with Raydium SDK v2, supporting AMM, CPMM and CLMM through a unified swap architecture. Handles the full transaction lifecycle — SOL/WSOL wrapping, ATA, signing and on-chain confirmation tracking — with concurrent multi-wallet trading via BullMQ.",
-      tags: projectTags.solana, link: "", repo: "", featured: true,
+      tags: projectTags.solana, link: "https://raydium.io/swap/?inputMint=sol&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", repo: "", featured: true,
     },
     {
       title: "Wordbee Localization Platform",
       description:
         "Features for a translation management & workflow automation platform: .NET backend, ReactJS frontend, RESTful APIs. Integrated Unity, Unreal Engine and the Google Sheets API to automatically sync data for the content production pipeline, leveraging Claude AI to accelerate development.",
-      tags: projectTags.wordbee, link: "", repo: "", featured: true,
+      tags: projectTags.wordbee, link: "https://www.wordbee.com", repo: "", featured: true,
     },
     {
       title: "Attendance Management System",
@@ -220,7 +254,19 @@ const en = {
       title: "Flight Ticket Booking Website",
       description:
         "A flight booking website with a React.js frontend and Node.js (Express) backend. Integrated the Bamboo Airways API to fetch flight schedules and fares and handle bookings; built RESTful APIs with data validation and test cases for the main flows.",
-      tags: projectTags.flight, link: "", repo: "", featured: false,
+      tags: projectTags.flight, link: "https://flight.sbaygroup.com/", repo: "", featured: false,
+    },
+    {
+      title: "F-ORDER — Restaurant Order Management",
+      description:
+        "Capstone 2 — a full-stack restaurant order management platform built with Node.js, Express, MongoDB, React and Socket.IO. Real-time order tracking, role-based access, product/customer management and analytics dashboards, plus REST APIs, JWT auth and WebSocket-based notifications with optimized database performance.",
+      tags: projectTags.forder, link: "https://order-management-amber-seven.vercel.app/", repo: "", featured: false,
+    },
+    {
+      title: "Career Support System",
+      description:
+        "Capstone 1 — a web platform where tutors create and publish courses and students enroll, pay and learn online. Covers course management, the payment flow and the full access-and-learning experience.",
+      tags: projectTags.career, link: "", repo: "", featured: false,
     },
   ],
   experience: [
@@ -257,6 +303,22 @@ const en = {
         "Developed a flight booking website with a React.js frontend and Node.js (Express) backend.",
         "Integrated the Bamboo Airways API to fetch flight schedules and fares and handle bookings.",
         "Built RESTful APIs, data validation and designed test cases for the main features.",
+      ],
+    },
+    {
+      role: "Fullstack Developer (Capstone 2)", company: "F-ORDER", period: periods.forder, stack: stacks.forder,
+      points: [
+        "Built a full-stack restaurant order management platform with Node.js, Express, MongoDB, React and Socket.IO.",
+        "Implemented real-time order tracking, role-based access, product/customer management and analytics dashboards.",
+        "Developed REST APIs, JWT auth, WebSocket-based notifications and optimized database performance.",
+      ],
+    },
+    {
+      role: "Fullstack Developer (Capstone 1)", company: "Career Support System", period: periods.career, stack: stacks.career,
+      points: [
+        "Built a web platform where tutors create and publish courses and students enroll, pay and learn online.",
+        "Developed a React frontend and a Node.js/Express backend with RESTful APIs over MongoDB.",
+        "Implemented the payment flow and purchase-based course access control.",
       ],
     },
   ],
@@ -314,13 +376,13 @@ const zh = {
       title: "Solana Token Swap Service",
       description:
         "基于 Raydium SDK v2 在 Solana 上构建的高性能代币兑换服务，通过统一的兑换架构同时支持 AMM、CPMM 和 CLMM。处理完整的交易生命周期——SOL/WSOL 封装、ATA、签名与链上确认追踪——并通过 BullMQ 实现多钱包并发交易。",
-      tags: projectTags.solana, link: "", repo: "", featured: true,
+      tags: projectTags.solana, link: "https://raydium.io/swap/?inputMint=sol&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", repo: "", featured: true,
     },
     {
       title: "Wordbee Localization Platform",
       description:
         "为翻译管理与流程自动化平台开发功能：.NET 后端、ReactJS 前端、RESTful API。集成 Unity、Unreal Engine 和 Google Sheets API，为内容生产流水线自动同步数据，并借助 Claude AI 加速开发。",
-      tags: projectTags.wordbee, link: "", repo: "", featured: true,
+      tags: projectTags.wordbee, link: "https://www.wordbee.com", repo: "", featured: true,
     },
     {
       title: "Attendance Management System",
@@ -332,7 +394,19 @@ const zh = {
       title: "Flight Ticket Booking Website",
       description:
         "机票预订网站，前端使用 React.js，后端使用 Node.js（Express）。集成 Bamboo Airways API 获取航班时刻、票价并处理预订；构建带数据校验的 RESTful API，并为主要流程编写测试用例。",
-      tags: projectTags.flight, link: "", repo: "", featured: false,
+      tags: projectTags.flight, link: "https://flight.sbaygroup.com/", repo: "", featured: false,
+    },
+    {
+      title: "Career Support System",
+      description:
+        "毕业设计 1 —— 一个网络平台，导师可创建并发布课程，学生可注册、付费并在线学习。涵盖课程管理、支付流程以及完整的访问与学习体验。",
+      tags: projectTags.career, link: "", repo: "", featured: false,
+    },
+    {
+      title: "F-ORDER — Restaurant Order Management",
+      description:
+        "毕业设计 2 —— 使用 Node.js、Express、MongoDB、React 和 Socket.IO 构建的全栈餐厅点餐管理平台。具备实时订单追踪、基于角色的访问控制、商品/客户管理和分析仪表盘，并提供 REST API、JWT 认证和基于 WebSocket 的通知，同时优化数据库性能。",
+      tags: projectTags.forder, link: "https://order-management-amber-seven.vercel.app/", repo: "", featured: false,
     },
   ],
   experience: [
@@ -369,6 +443,22 @@ const zh = {
         "开发机票预订网站，前端使用 React.js，后端使用 Node.js（Express）。",
         "集成 Bamboo Airways API 获取航班时刻、票价并处理预订。",
         "构建 RESTful API、数据校验，并为主要功能设计测试用例。",
+      ],
+    },
+    {
+      role: "全栈开发工程师（毕业设计 2）", company: "F-ORDER", period: periods.forder, stack: stacks.forder,
+      points: [
+        "使用 Node.js、Express、MongoDB、React 和 Socket.IO 构建全栈餐厅点餐管理平台。",
+        "实现实时订单追踪、基于角色的访问控制、商品/客户管理和分析仪表盘。",
+        "开发 REST API、JWT 认证、基于 WebSocket 的通知，并优化数据库性能。",
+      ],
+    },
+    {
+      role: "全栈开发工程师（毕业设计 1）", company: "Career Support System", period: periods.career, stack: stacks.career,
+      points: [
+        "构建网络平台，导师可创建并发布课程，学生可注册、付费并在线学习。",
+        "开发 React 前端与 Node.js/Express 后端，基于 MongoDB 设计 RESTful API。",
+        "实现支付流程与基于购买状态的课程访问控制。",
       ],
     },
   ],

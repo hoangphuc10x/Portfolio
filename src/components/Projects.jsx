@@ -14,8 +14,8 @@ export default function Projects() {
         <SectionHeading index="03" kicker={t.ui.sections.projects.kicker} title={t.ui.sections.projects.title} />
 
         <div className="grid lg:grid-cols-6 gap-6 lg:gap-7 [perspective:1200px]">
-          {projects.map((p) => (
-            <ProjectCard key={p.title} project={p} featured={p.featured} />
+          {projects.map((p, i) => (
+            <ProjectCard key={p.title} project={p} featured={p.featured} index={i} />
           ))}
         </div>
       </div>

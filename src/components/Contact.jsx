@@ -11,14 +11,14 @@ export default function Contact() {
   return (
     <section id="contact" ref={ref} className="px-6 py-24 sm:py-32">
       <div className="mx-auto max-w-3xl text-center">
-        <p className="reveal font-mono text-sm text-[var(--color-neon-cyan)] mb-4">
+        <p className="reveal font-mono text-sm uppercase tracking-widest text-[var(--color-accent)] mb-4">
           {c.kicker}
         </p>
         <h2 className="reveal font-display font-bold text-4xl sm:text-6xl tracking-tight">
-          <span className="text-white">{c.titleA}</span>{" "}
-          <span className="gradient-text">{c.titleB}</span>
+          <span className="text-[var(--color-ink)]">{c.titleA}</span>{" "}
+          <span className="accent-text">{c.titleB}</span>
         </h2>
-        <p className="reveal mt-6 text-lg text-gray-400 leading-relaxed">
+        <p className="reveal mt-6 text-lg text-[var(--color-muted)] leading-relaxed">
           {c.paragraph}
         </p>
 
@@ -26,7 +26,7 @@ export default function Contact() {
           <Magnetic>
             <a
               href={`mailto:${t.profile.email}`}
-              className="btn-neon inline-flex rounded-full px-8 py-4 font-semibold text-[#07070d] text-lg break-all"
+              className="btn-primary inline-flex rounded-full px-8 py-4 font-semibold text-lg break-all"
             >
               {t.profile.email}
             </a>
@@ -40,7 +40,7 @@ export default function Contact() {
               href={url}
               target={key === "email" ? undefined : "_blank"}
               rel="noreferrer"
-              className="nav-link text-gray-400 hover:text-white"
+              className="nav-link text-[var(--color-muted)] hover:text-[var(--color-ink)]"
             >
               {c.socials[key] || key} ↗
             </a>
