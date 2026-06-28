@@ -52,17 +52,24 @@ function Solana() {
   return (
     <svg {...svgProps}>
       <Bg />
-      {/* đường xu hướng mờ */}
+      {/* đường xu hướng mờ — chạy nét đứt */}
       <polyline
         points="46,72 96,89 146,63 196,100 246,58 296,78"
         fill="none" stroke={ACCENT} strokeWidth="2" strokeOpacity="0.45"
         strokeDasharray="4 5" strokeLinecap="round"
-      />
-      {/* nến: tăng = accent, giảm = mực nhạt */}
+      >
+        <animate attributeName="stroke-dashoffset" values="18;0" dur="0.9s" repeatCount="indefinite" />
+      </polyline>
+      {/* nến: tăng = accent, giảm = mực nhạt — nảy lên lệch pha */}
       {candles.map((c, i) => {
         const col = c.up ? ACCENT : INK;
         return (
           <g key={i}>
+            <animateTransform
+              attributeName="transform" type="translate"
+              values="0 4; 0 0; 0 4" dur="3.2s" begin={`${i * 0.25}s`} repeatCount="indefinite"
+              calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1"
+            />
             <line x1={c.x} y1={c.wt} x2={c.x} y2={c.wb} stroke={col} strokeWidth="2" strokeOpacity={c.up ? 0.9 : 0.55} />
             <rect
               x={c.x - 8} y={c.bt} width="16" height={c.bb - c.bt}
@@ -71,50 +78,89 @@ function Solana() {
           </g>
         );
       })}
-      {/* đồng coin */}
-      <g>
-        <circle cx="348" cy="90" r="26" fill={ACCENT} />
-        <g fill="#faf9f6">
-          <path d="M337,80 H363 L357,86 H331 Z" />
-          <path d="M337,88 H363 L357,94 H331 Z" />
-          <path d="M337,96 H363 L357,102 H331 Z" />
+      {/* đồng coin — quay lật nhẹ + lấp lánh */}
+      <g transform="translate(348,90)">
+        <g>
+          <animateTransform
+            attributeName="transform" type="scale" values="1 1; 0.15 1; 1 1"
+            dur="4.5s" repeatCount="indefinite"
+            calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1"
+          />
+          <circle r="26" fill={ACCENT} />
+          <g fill="#faf9f6" transform="translate(-348,-90)">
+            <path d="M337,80 H363 L357,86 H331 Z" />
+            <path d="M337,88 H363 L357,94 H331 Z" />
+            <path d="M337,96 H363 L357,102 H331 Z" />
+          </g>
         </g>
       </g>
     </svg>
   );
 }
 
-/* ---------- Localization: quả địa cầu + ngôn ngữ ---------- */
+/* ---------- Localization: quả địa cầu xoay + ngôn ngữ trôi nổi ---------- */
 function Localization() {
   const bubbles = [
-    { x: 250, y: 62, t: "A" },
-    { x: 318, y: 90, t: "文" },
-    { x: 250, y: 118, t: "あ" },
+    { x: 250, y: 58, t: "A", dur: "3.4s" },
+    { x: 322, y: 90, t: "文", dur: "4.2s" },
+    { x: 250, y: 122, t: "あ", dur: "3.8s" },
   ];
   return (
     <svg {...svgProps}>
+      <defs>
+        <radialGradient id="loc-globe" cx="38%" cy="34%" r="75%">
+          <stop offset="0%" stopColor={ACCENT} stopOpacity="0.22" />
+          <stop offset="60%" stopColor={ACCENT} stopOpacity="0.08" />
+          <stop offset="100%" stopColor={ACCENT} stopOpacity="0.02" />
+        </radialGradient>
+      </defs>
       <Bg />
+
+      {/* vầng sáng nền cho địa cầu */}
+      <circle cx="118" cy="90" r="70" fill={ACCENT} opacity="0.05">
+        <animate attributeName="r" values="68;74;68" dur="5s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.04;0.08;0.04" dur="5s" repeatCount="indefinite" />
+      </circle>
+
       {/* địa cầu */}
-      <g transform="translate(118,90)" fill="none" stroke={INK} strokeWidth="2" strokeOpacity="0.8">
-        <circle r="58" />
-        <ellipse rx="58" ry="22" />
-        <ellipse rx="58" ry="42" />
-        <ellipse rx="22" ry="58" />
-        <ellipse rx="42" ry="58" />
-        <line x1="-58" y1="0" x2="58" y2="0" />
+      <g transform="translate(118,90)">
+        <circle r="58" fill="url(#loc-globe)" stroke={INK} strokeWidth="2" strokeOpacity="0.8" />
+        <g fill="none" stroke={INK} strokeWidth="1.6" strokeOpacity="0.7">
+          {/* vĩ tuyến (ngang) — đứng yên */}
+          <ellipse rx="58" ry="22" />
+          <ellipse rx="58" ry="42" />
+          <line x1="-58" y1="0" x2="58" y2="0" />
+          {/* kinh tuyến (dọc) — co giãn để giả lập địa cầu xoay */}
+          <ellipse ry="58">
+            <animate attributeName="rx" values="58;8;58" dur="6s" repeatCount="indefinite" />
+            <animate attributeName="stroke-opacity" values="0.7;0.25;0.7" dur="6s" repeatCount="indefinite" />
+          </ellipse>
+          <ellipse ry="58">
+            <animate attributeName="rx" values="30;58;8;30" dur="6s" repeatCount="indefinite" />
+          </ellipse>
+        </g>
       </g>
-      {/* đường nối tới các bong bóng ngôn ngữ */}
+
+      {/* đường nối chạy nét đứt tới các bong bóng */}
       {bubbles.map((b, i) => (
         <line
-          key={`l${i}`} x1="176" y1="90" x2={b.x} y2={b.y}
-          stroke={ACCENT} strokeWidth="1.5" strokeOpacity="0.4" strokeDasharray="3 5"
-        />
+          key={`l${i}`} x1="178" y1="90" x2={b.x} y2={b.y}
+          stroke={ACCENT} strokeWidth="1.5" strokeOpacity="0.45" strokeDasharray="3 6" strokeLinecap="round"
+        >
+          <animate attributeName="stroke-dashoffset" values="18;0" dur="0.9s" repeatCount="indefinite" />
+        </line>
       ))}
-      {/* bong bóng glyph */}
+
+      {/* bong bóng glyph — trôi nổi nhẹ, lệch pha nhau */}
       {bubbles.map((b, i) => (
         <g key={`b${i}`}>
+          <animateTransform
+            attributeName="transform" type="translate"
+            values="0 0; 0 -5; 0 0" dur={b.dur} repeatCount="indefinite"
+            calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1"
+          />
           <rect
-            x={b.x - 20} y={b.y - 18} width="40" height="36" rx="11"
+            x={b.x - 20} y={b.y - 18} width="40" height="36" rx="12"
             fill="#fffdf9" stroke={ACCENT} strokeWidth="2"
           />
           <text
@@ -149,12 +195,17 @@ function Attendance() {
             const checked = r === 1 && c === 2;
             return checked ? (
               <g key={`${r}-${c}`}>
-                <circle cx={cx} cy={cy} r="9" fill={ACCENT} />
+                <circle cx={cx} cy={cy} r="9" fill={ACCENT}>
+                  <animate attributeName="r" values="0;9;9;9" dur="3s" keyTimes="0;0.2;0.9;1" repeatCount="indefinite" />
+                </circle>
                 <path
                   d={`M${cx - 4},${cy} l3,3 l5,-6`}
                   fill="none" stroke="#fffdf9" strokeWidth="2.2"
                   strokeLinecap="round" strokeLinejoin="round"
-                />
+                  strokeDasharray="16" strokeDashoffset="16"
+                >
+                  <animate attributeName="stroke-dashoffset" values="16;16;0;0" dur="3s" keyTimes="0;0.2;0.45;1" repeatCount="indefinite" />
+                </path>
               </g>
             ) : (
               <circle key={`${r}-${c}`} cx={cx} cy={cy} r="5" fill="rgba(31,29,26,0.18)" />
@@ -162,9 +213,16 @@ function Attendance() {
           })
         )}
       </g>
-      {/* nhân sự */}
+      {/* nhân sự — người ở giữa nhấp nhẹ lên xuống */}
       {[250, 300, 350].map((x, i) => (
         <g key={i} fill="none" stroke={i === 1 ? ACCENT : INK} strokeOpacity={i === 1 ? 1 : 0.7} strokeWidth="3">
+          {i === 1 && (
+            <animateTransform
+              attributeName="transform" type="translate" values="0 0; 0 -6; 0 0"
+              dur="2.6s" repeatCount="indefinite"
+              calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1"
+            />
+          )}
           <circle cx={x} cy="78" r="14" />
           <path d={`M${x - 22},132 a22 24 0 0 1 44 0`} />
         </g>
@@ -180,11 +238,14 @@ function Flight() {
       <Bg />
       {/* đường bay cong */}
       <path
+        id="flight-path"
         d="M52,140 Q200,10 348,120"
         fill="none" stroke={ACCENT} strokeWidth="2.5"
         strokeDasharray="2 8" strokeLinecap="round"
-      />
-      {/* ghim điểm đi / đến */}
+      >
+        <animate attributeName="stroke-dashoffset" values="20;0" dur="1.4s" repeatCount="indefinite" />
+      </path>
+      {/* ghim điểm đi / đến — nhấp nháy lệch pha */}
       {[
         { x: 52, y: 140 },
         { x: 348, y: 120 },
@@ -194,12 +255,19 @@ function Flight() {
             d="M11,1 a9 9 0 0 0-9 9 c0 6 9 16 9 16 s9-10 9-16 a9 9 0 0 0-9-9 z"
             fill="#fffdf9" stroke={ACCENT} strokeWidth="2"
           />
-          <circle cx="11" cy="10" r="3.5" fill={ACCENT} />
+          <circle cx="11" cy="10" r="3.5" fill={ACCENT}>
+            <animate attributeName="r" values="3.5;5;3.5" dur="1.8s" begin={`${i * 0.9}s`} repeatCount="indefinite" />
+          </circle>
         </g>
       ))}
-      {/* máy bay ở dải giữa đường bay */}
-      <g transform="translate(176,72) rotate(20) scale(1.9)" fill={INK}>
-        <path d="M2 16 L24 9 L2 2 L2 7.5 L15 9 L2 10.5 Z" />
+      {/* máy bay bay dọc theo đường bay */}
+      <g fill={INK}>
+        <g transform="scale(1.9)">
+          <path d="M2 16 L24 9 L2 2 L2 7.5 L15 9 L2 10.5 Z" transform="translate(-12,-9)" />
+        </g>
+        <animateMotion dur="5s" repeatCount="indefinite" rotate="auto" keyPoints="0;1" keyTimes="0;1" calcMode="linear">
+          <mpath href="#flight-path" />
+        </animateMotion>
       </g>
       {/* điểm trang trí */}
       <g fill="rgba(31,29,26,0.14)">
@@ -236,10 +304,20 @@ function Course() {
         <line x1="34" y1="11" x2="34" y2="26" stroke={INK} strokeWidth="1.5" strokeOpacity="0.7" />
         <circle cx="34" cy="28" r="3" fill={ACCENT} />
       </g>
-      {/* nút play (khoá học online) */}
+      {/* nút play (khoá học online) — vòng sóng lan + nhịp đập */}
       <g transform="translate(308,90)">
-        <circle r="34" fill={ACCENT} />
-        <path d="M-10,-16 L18,0 L-10,16 Z" fill="#faf9f6" />
+        <circle r="34" fill={ACCENT} fillOpacity="0.25">
+          <animate attributeName="r" values="34;46;34" dur="2.4s" repeatCount="indefinite" />
+          <animate attributeName="fill-opacity" values="0.3;0;0.3" dur="2.4s" repeatCount="indefinite" />
+        </circle>
+        <g>
+          <animateTransform
+            attributeName="transform" type="scale" values="1;1.08;1" dur="2.4s" repeatCount="indefinite"
+            calcMode="spline" keyTimes="0;0.5;1" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1"
+          />
+          <circle r="34" fill={ACCENT} />
+          <path d="M-10,-16 L18,0 L-10,16 Z" fill="#faf9f6" />
+        </g>
       </g>
     </svg>
   );
@@ -258,19 +336,25 @@ function Restaurant() {
         <path d="M58,66 H74" />
         <line x1="66" y1="66" x2="66" y2="132" />
       </g>
-      {/* đĩa */}
+      {/* đĩa — tâm đĩa nhịp nhẹ */}
       <g transform="translate(150,92)">
         <circle r="56" fill="#fffdf9" stroke={INK} strokeWidth="2" strokeOpacity="0.8" />
         <circle r="40" fill="none" stroke={INK} strokeOpacity="0.18" strokeWidth="1.5" />
-        <circle r="22" fill={ACCENT} fillOpacity="0.9" />
+        <circle r="22" fill={ACCENT} fillOpacity="0.9">
+          <animate attributeName="r" values="22;25;22" dur="2.8s" repeatCount="indefinite" />
+        </circle>
       </g>
       {/* dao */}
       <g stroke={INK} strokeWidth="3" strokeOpacity="0.85" strokeLinecap="round" fill="none">
         <path d="M236,46 q9,16 0,34" />
         <line x1="236" y1="80" x2="236" y2="132" />
       </g>
-      {/* chuông gọi món */}
+      {/* chuông gọi món — lắc lư như đang rung */}
       <g transform="translate(322,98)">
+        <animateTransform
+          attributeName="transform" type="rotate" values="0 0 24; -7 0 24; 7 0 24; 0 0 24"
+          dur="0.6s" begin="0s;chime.end+2.4s" id="chime"
+        />
         <path d="M-26,16 h52 a4 4 0 0 1 0 8 h-52 a4 4 0 0 1 0-8 Z" fill={ACCENT} />
         <path d="M-22,16 a22 22 0 0 1 44 0 Z" fill="#fffdf9" stroke={INK} strokeWidth="2" strokeOpacity="0.8" />
         <line x1="0" y1="-6" x2="0" y2="-12" stroke={INK} strokeWidth="2" strokeLinecap="round" />
@@ -289,7 +373,29 @@ const COVERS = {
   restaurant: Restaurant,
 };
 
+// Ảnh thật cho từng dự án (đặt trong public/projects/). Không có thì dùng cover SVG động.
+const IMAGES = {
+  solana: "/projects/solana.png",
+  localization: "/projects/wordbee.png",
+  attendance: "/projects/attendance.png",
+  flight: "/projects/s-bay.png",
+  course: "/projects/career.png",
+  restaurant: "/projects/forder.png",
+};
+
 export default function ProjectCover({ title }) {
-  const Cover = COVERS[pickType(title)] || Solana;
+  const type = pickType(title);
+  const img = IMAGES[type];
+  if (img) {
+    return (
+      <img
+        src={img}
+        alt={title}
+        loading="lazy"
+        className="w-full h-full object-cover transition-transform duration-500 ease-out hover:scale-105"
+      />
+    );
+  }
+  const Cover = COVERS[type] || Solana;
   return <Cover />;
 }

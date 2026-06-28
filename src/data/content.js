@@ -30,7 +30,8 @@ const skillItems = {
   backend: [".NET / ASP.NET Core", "C#", "NestJS", "Node.js", "Express", "RESTful API"],
   database: ["SQL Server", "MySQL", "MongoDB", "Redis", "TypeORM"],
   blockchain: ["Solana Web3.js", "Raydium SDK v2", "BullMQ", "AMM / CPMM / CLMM"],
-  tooling: ["Git / GitHub", "CI/CD (GitHub Actions)", "Jest", "Postman", "JWT", "Webhooks", "Unity", "Unreal Engine", "Google Sheets API", "Claude AI"],
+  ai: ["Claude AI / Anthropic API", "OpenAI API", "Prompt Engineering", "RAG", "AI Agents", "MCP (Model Context Protocol)"],
+  tooling: ["Git / GitHub", "CI/CD (GitHub Actions)", "Jest", "Postman", "JWT", "Webhooks", "Unity", "Unreal Engine", "Google Sheets API"],
 };
 
 const projectTags = {
@@ -89,20 +90,21 @@ const vi = {
     { category: "Backend", items: skillItems.backend },
     { category: "Database & Cache", items: skillItems.database },
     { category: "Blockchain", items: skillItems.blockchain },
+    { category: "AI & LLM", items: skillItems.ai },
     { category: "Công cụ & Tích hợp", items: skillItems.tooling },
   ],
   projects: [
-    {
-      title: "Solana Token Swap Service",
-      description:
-        "Dịch vụ token swap hiệu năng cao trên Solana dùng Raydium SDK v2, hỗ trợ đồng thời AMM, CPMM và CLMM qua một kiến trúc swap thống nhất. Xử lý trọn vòng đời giao dịch: wrap SOL/WSOL, ATA, ký và theo dõi xác nhận on-chain, kèm trading đa ví song song bằng BullMQ.",
-      tags: projectTags.solana, link: "https://raydium.io/swap/?inputMint=sol&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", repo: "", featured: true,
-    },
     {
       title: "Wordbee Localization Platform",
       description:
         "Tính năng cho nền tảng quản lý dịch thuật & tự động hoá quy trình: backend .NET, frontend ReactJS, RESTful API. Tích hợp Unity, Unreal Engine và Google Sheets API để đồng bộ dữ liệu tự động cho pipeline sản xuất nội dung, tận dụng Claude AI để tăng tốc phát triển.",
       tags: projectTags.wordbee, link: "https://www.wordbee.com", repo: "", featured: true,
+    },
+    {
+      title: "Solana Token Swap Service",
+      description:
+        "Dịch vụ token swap hiệu năng cao trên Solana dùng Raydium SDK v2, hỗ trợ đồng thời AMM, CPMM và CLMM qua một kiến trúc swap thống nhất. Xử lý trọn vòng đời giao dịch: wrap SOL/WSOL, ATA, ký và theo dõi xác nhận on-chain, kèm trading đa ví song song bằng BullMQ.",
+      tags: projectTags.solana, link: "https://raydium.io/swap/?inputMint=sol&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", repo: "", featured: true,
     },
     {
       title: "Attendance Management System",
@@ -229,15 +231,10 @@ const en = {
     { category: "Backend", items: skillItems.backend },
     { category: "Database & Cache", items: skillItems.database },
     { category: "Blockchain", items: skillItems.blockchain },
+    { category: "AI & LLM", items: skillItems.ai },
     { category: "Tooling & Integrations", items: skillItems.tooling },
   ],
   projects: [
-    {
-      title: "Solana Token Swap Service",
-      description:
-        "A high-performance token swap service on Solana built with Raydium SDK v2, supporting AMM, CPMM and CLMM through a unified swap architecture. Handles the full transaction lifecycle — SOL/WSOL wrapping, ATA, signing and on-chain confirmation tracking — with concurrent multi-wallet trading via BullMQ.",
-      tags: projectTags.solana, link: "https://raydium.io/swap/?inputMint=sol&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", repo: "", featured: true,
-    },
     {
       title: "Wordbee Localization Platform",
       description:
@@ -245,10 +242,16 @@ const en = {
       tags: projectTags.wordbee, link: "https://www.wordbee.com", repo: "", featured: true,
     },
     {
+      title: "Solana Token Swap Service",
+      description:
+        "A high-performance token swap service on Solana built with Raydium SDK v2, supporting AMM, CPMM and CLMM through a unified swap architecture. Handles the full transaction lifecycle — SOL/WSOL wrapping, ATA, signing and on-chain confirmation tracking — with concurrent multi-wallet trading via BullMQ.",
+      tags: projectTags.solana, link: "https://raydium.io/swap/?inputMint=sol&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", repo: "", featured: true,
+    },
+    {
       title: "Attendance Management System",
       description:
         "An attendance system with authentication, role-based access control (RBAC), leave-request management and an admin dashboard. Built on NestJS + MySQL + TypeORM, secured with JWT and optimized with Redis, following RESTful API standards.",
-      tags: projectTags.attendance, link: "", repo: "", featured: false,
+      tags: projectTags.attendance, link: "https://hr-aiot-managerment.vercel.app/", repo: "", featured: false,
     },
     {
       title: "Flight Ticket Booking Website",
@@ -369,15 +372,10 @@ const zh = {
     { category: "后端", items: skillItems.backend },
     { category: "数据库与缓存", items: skillItems.database },
     { category: "区块链", items: skillItems.blockchain },
+    { category: "AI 与大模型", items: skillItems.ai },
     { category: "工具与集成", items: skillItems.tooling },
   ],
   projects: [
-    {
-      title: "Solana Token Swap Service",
-      description:
-        "基于 Raydium SDK v2 在 Solana 上构建的高性能代币兑换服务，通过统一的兑换架构同时支持 AMM、CPMM 和 CLMM。处理完整的交易生命周期——SOL/WSOL 封装、ATA、签名与链上确认追踪——并通过 BullMQ 实现多钱包并发交易。",
-      tags: projectTags.solana, link: "https://raydium.io/swap/?inputMint=sol&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", repo: "", featured: true,
-    },
     {
       title: "Wordbee Localization Platform",
       description:
@@ -385,10 +383,16 @@ const zh = {
       tags: projectTags.wordbee, link: "https://www.wordbee.com", repo: "", featured: true,
     },
     {
+      title: "Solana Token Swap Service",
+      description:
+        "基于 Raydium SDK v2 在 Solana 上构建的高性能代币兑换服务，通过统一的兑换架构同时支持 AMM、CPMM 和 CLMM。处理完整的交易生命周期——SOL/WSOL 封装、ATA、签名与链上确认追踪——并通过 BullMQ 实现多钱包并发交易。",
+      tags: projectTags.solana, link: "https://raydium.io/swap/?inputMint=sol&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", repo: "", featured: true,
+    },
+    {
       title: "Attendance Management System",
       description:
         "考勤管理系统，具备身份验证、基于角色的访问控制（RBAC）、请假管理和管理后台。基于 NestJS + MySQL + TypeORM 构建，使用 JWT 保障安全、Redis 优化性能，遵循 RESTful API 规范。",
-      tags: projectTags.attendance, link: "", repo: "", featured: false,
+      tags: projectTags.attendance, link: "https://hr-aiot-managerment.vercel.app/", repo: "", featured: false,
     },
     {
       title: "Flight Ticket Booking Website",

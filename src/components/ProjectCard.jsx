@@ -15,7 +15,7 @@ export default function ProjectCard({ project, featured, index = 0 }) {
       } ${featured ? "lg:col-span-6" : "lg:col-span-3"}`}
     >
       {/* ảnh bìa theo chủ đề, tràn ra sát mép card */}
-      <div className="-mx-8 -mt-8 mb-6 h-32 sm:h-40 border-b border-[var(--color-line)]">
+      <div className="-mx-8 -mt-8 mb-6 h-48 sm:h-60 border-b border-[var(--color-line)]">
         <ProjectCover title={project.title} />
       </div>
 
