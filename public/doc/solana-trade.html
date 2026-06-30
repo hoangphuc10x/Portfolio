@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>solana-trade — System Architecture</title>
+<meta name="description" content="Layered architecture of the solana-trade backend: NestJS + Fastify API, MongoDB + Redis + BullMQ, Solana on-chain swap / staking / scheduled trading, and external relays.">
+<style>
+  :root {
+    --ground: #f5f6f8;
+    --surface: #ffffff;
+    --ink: #14181f;
+    --muted: #5b6573;
+    --faint: #8a93a1;
+    --border: #e4e7ec;
+    --border-strong: #cbd1da;
+
+    --client: #475569;   /* slate  */
+    --client-bg: #eef1f5;
+    --api: #4f46e5;      /* indigo */
+    --api-bg: #ececfb;
+    --be: #0d9488;       /* teal   */
+    --be-bg: #e0f3f0;
+    --data: #b45309;     /* amber  */
+    --data-bg: #f8efe2;
+    --chain: #7c3aed;    /* violet - on-chain */
+    --chain-bg: #f1ebfd;
+    --ext: #be185d;      /* rose   - web2 svc */
+    --ext-bg: #fbe8f0;
+    --ops: #334155;      /* slate dark */
+    --ops-bg: #eef1f5;
+
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 52px 26px 80px; }
+
+  /* ---- masthead ---- */
+  header.mast {
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    justify-content: space-between; gap: 12px 24px;
+    border-bottom: 2px solid var(--ink); padding-bottom: 18px;
+  }
+  .mast h1 { font-size: clamp(25px, 4vw, 37px); margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+  .mast .sub { color: var(--muted); font-size: 15px; margin-top: 4px; }
+  .mast .meta { font-family: var(--mono); font-size: 12px; color: var(--faint); text-align: right; line-height: 1.7; }
+  .mast .meta b { color: var(--muted); font-weight: 600; }
+
+  /* ---- legend ---- */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 6px 18px;
+    margin: 22px 0 8px; font-family: var(--mono); font-size: 12px; color: var(--muted);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  /* ---- stack ---- */
+  .stack { display: flex; flex-direction: column; gap: 0; margin-top: 14px; }
+  .layer {
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--lc, var(--border-strong));
+    border-radius: 10px; padding: 18px 20px 20px;
+  }
+  .layer-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+  }
+  .layer-head h2 { font-size: 16px; margin: 0; letter-spacing: -0.01em; }
+  .tag {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    letter-spacing: 0.03em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 5px; white-space: nowrap;
+  }
+  .layer-note { color: var(--muted); font-size: 13.5px; margin: 0; }
+  .layer-note code, .desc code, code.m { font-family: var(--mono); font-size: 0.92em; color: var(--ink); }
+
+  /* connector arrows between layers */
+  .conn {
+    align-self: center; font-family: var(--mono); font-size: 12px;
+    color: var(--faint); padding: 9px 0; text-align: center; line-height: 1.4;
+  }
+  .conn b { color: var(--be); font-weight: 600; }
+  .conn .arrow { display: block; font-size: 15px; color: var(--border-strong); }
+
+  /* chip grids */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); gap: 8px; }
+  .chip { border: 1px solid var(--border); background: var(--ground); border-radius: 8px; padding: 9px 11px; }
+  .chip .name { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--ink); }
+  .chip .desc { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .chip.accent { background: var(--accent-bg); border-color: transparent; }
+  .chip.accent .name { color: var(--accent); }
+
+  .col-split { display: grid; grid-template-columns: 1.55fr 1fr; gap: 18px; }
+  @media (max-width: 720px) { .col-split { grid-template-columns: 1fr; } }
+
+  .subhead {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--faint); margin: 0 0 8px;
+  }
+  .subhead code { font-family: var(--mono); text-transform: none; color: var(--muted); }
+
+  /* two-up for data + external */
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .duo { grid-template-columns: 1fr; } }
+
+  /* devops footer */
+  .ops { margin-top: 26px; border: 1px dashed var(--border-strong); border-radius: 10px; padding: 16px 20px; background: var(--ops-bg); }
+  .ops .chip { background: var(--surface); }
+
+  /* ---- core features / flows ---- */
+  .features { margin-top: 38px; }
+  .features > .ftitle { font-size: 18px; letter-spacing: -0.01em; margin: 0 0 4px; }
+  .features > .fsub { color: var(--muted); font-size: 13.5px; margin: 0 0 16px; }
+
+  .feat {
+    background: var(--surface); border: 1px solid var(--border);
+    border-top: 3px solid var(--fc, var(--border-strong));
+    border-radius: 10px; padding: 18px 20px 20px;
+  }
+  .feat + .feat { margin-top: 14px; }
+  .feat-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .feat-h h3 { font-size: 15.5px; margin: 0; letter-spacing: -0.01em; }
+  .feat-desc { color: var(--muted); font-size: 13px; margin: 5px 0 0; }
+  .feat-desc code { font-family: var(--mono); font-size: 0.9em; color: var(--ink); }
+
+  /* flowchart — wraps to new rows, never scrolls horizontally */
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 2px; margin: 16px 0 4px; }
+  .node {
+    flex: 0 0 auto; width: 158px; background: var(--surface);
+    border: 1.5px solid var(--border-strong); border-radius: 8px; padding: 9px 11px;
+  }
+  .node .nt { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1.25; color: var(--ink); }
+  .node .nd { font-size: 10.5px; color: var(--muted); margin-top: 3px; line-height: 1.35; }
+  .node .nd code { font-family: var(--mono); font-size: 10px; color: var(--ink); }
+  .node.start { border-color: var(--fc); }
+  .node.start .nt { color: var(--fc); }
+  .node.decision { border-style: dashed; border-color: var(--fc); }
+  .node.ok { border-color: #16a34a; background: #f0fbf4; }
+  .node.ok .nt { color: #15803d; }
+  .node.bad { border-color: #dc2626; background: #fdf1f1; }
+  .node.bad .nt { color: #b91c1c; }
+
+  .arr { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 34px; }
+  .arr .al { font-size: 8px; text-transform: uppercase; letter-spacing: 0.03em; text-align: center; line-height: 1.1; color: var(--faint); margin-bottom: 1px; max-width: 58px; }
+  .arr .ah { font-size: 16px; line-height: 1; color: var(--border-strong); }
+
+  /* a decision splits into stacked outcome rows */
+  .branch { flex: 0 0 auto; display: flex; flex-direction: column; gap: 9px; }
+  .brow { display: flex; flex-wrap: wrap; align-items: center; gap: 9px 2px; }
+
+  /* narrow screens: stack the flow into a vertical column with DOWN arrows */
+  @media (max-width: 900px) {
+    .flow { flex-direction: column; align-items: center; gap: 0; }
+    .flow .node { width: auto; max-width: 100%; }
+    .flow .arr { flex-direction: row; justify-content: center; width: 100%; min-width: 0; padding: 7px 0; gap: 7px; }
+    .flow .arr .al { margin-bottom: 0; max-width: none; }
+    .flow .arr .ah { transform: rotate(90deg); }
+    .branch { width: auto; align-items: center; }
+    .brow { flex-direction: column; align-items: center; gap: 0; }
+  }
+  .detail-row { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .detail-row .lbl { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--faint); margin-right: 4px; }
+  .pill { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 12px; background: var(--ground); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+  .pill.hot { background: var(--fc-bg); border-color: transparent; color: var(--fc); }
+
+  /* mock UI block */
+  .mock-wrap { margin-top: 18px; border-top: 1px dashed var(--border); padding-top: 14px; }
+  .mock-cap { font-size: 12.5px; color: var(--muted); margin-bottom: 12px; }
+  .mock-cap b { color: var(--ink); }
+  .mock-cap code { font-family: var(--mono); font-size: 0.9em; }
+  .mock { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1.2fr); gap: 12px; align-items: stretch; }
+  @media (max-width: 720px) { .mock { grid-template-columns: 1fr; } }
+
+  .panel { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+  .panel-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11.5px; font-weight: 700; padding: 8px 11px; background: var(--ground); border-bottom: 1px solid var(--border); }
+  .panel-h .cnt { font-family: var(--mono); font-size: 10.5px; font-weight: 700; color: var(--fc); }
+  .perm { padding: 3px 11px 7px; }
+  .prow { display: flex; align-items: center; gap: 9px; font-size: 12px; color: var(--ink); padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .perm .prow:last-child { border-bottom: none; }
+  .prow.off { color: var(--faint); }
+  .prow.add { margin: 0 -11px; padding-left: 11px; padding-right: 11px; background: var(--fc-bg); }
+  .cb { flex: 0 0 auto; width: 15px; height: 15px; border-radius: 4px; background: var(--fc); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; }
+  .cb.e { background: transparent; border: 1.5px solid var(--border-strong); }
+  .newtag { margin-left: auto; font-family: var(--mono); font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fc); background: var(--surface); border: 1px solid var(--fc); border-radius: 10px; padding: 1px 6px; white-space: nowrap; }
+  .mock-arr { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 42px; }
+  .mock-arr .al { font-size: 8px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--faint); text-align: center; line-height: 1.1; margin-bottom: 2px; }
+  .mock-arr .ah { font-size: 18px; color: var(--fc); }
+  @media (max-width: 720px) { .mock-arr .ah { transform: rotate(90deg); } }
+
+  .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 11px; }
+  .tile { border: 1px solid var(--border); border-radius: 8px; background: var(--ground); padding: 10px 11px; font-size: 11.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 44px; }
+  .tile.new { border-color: var(--fc); background: var(--fc-bg); color: var(--fc); }
+
+  /* dashboard KPIs + mini chart */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  @media (max-width: 560px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { border: 1px solid var(--border); border-radius: 8px; background: var(--ground); padding: 10px 11px; }
+  .kpi .k-v { font-size: 19px; font-weight: 700; color: var(--fc); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; line-height: 1.1; }
+  .kpi .k-l { font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 3px; }
+  .chartbox { margin-top: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 12px 14px 10px; overflow-x: auto; }
+  .chart-h { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 10px; }
+  .chart-h code { font-family: var(--mono); text-transform: none; }
+  .chart-plot { display: flex; align-items: flex-start; gap: 7px; width: fit-content; }
+  .y-axis { height: 96px; display: flex; flex-direction: column; justify-content: space-between; text-align: right; font-family: var(--mono); font-size: 8px; color: var(--faint); }
+  .plot-col { display: flex; flex-direction: column; gap: 4px; }
+  .bars { display: flex; align-items: flex-end; gap: 8px; height: 96px; padding: 0 9px; border-left: 1.5px solid var(--border-strong); border-bottom: 1.5px solid var(--border-strong); }
+  .bar { display: flex; align-items: flex-end; height: 100%; }
+  .bar i { width: 20px; background: var(--fc); border-radius: 3px 3px 0 0; opacity: 0.85; display: block; }
+  .xlabels { display: flex; gap: 8px; padding: 0 9px; }
+  .xlabels span { width: 20px; text-align: center; font-family: var(--mono); font-size: 8px; color: var(--faint); }
+
+  footer.note { margin-top: 30px; font-size: 12.5px; color: var(--faint); border-top: 1px solid var(--border); padding-top: 14px; }
+  footer.note code { font-family: var(--mono); color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="mast">
+    <div>
+      <h1>solana-trade — System Architecture</h1>
+      <div class="sub">Solana trading-bot backend · NestJS API · on-chain swap / staking / scheduled trading</div>
+    </div>
+    <div class="meta">
+      <div><b>runtime</b> NestJS 11 · Fastify 5 · Node 22</div>
+      <div><b>data</b> MongoDB 8 · Redis · BullMQ</div>
+      <div><b>chain</b> @solana/web3.js · Anchor 0.32</div>
+    </div>
+  </header>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--client)"></i> Clients</span>
+    <span><i class="dot" style="background:var(--be)"></i> Backend (NestJS)</span>
+    <span><i class="dot" style="background:var(--data)"></i> Data &amp; queue</span>
+    <span><i class="dot" style="background:var(--chain)"></i> Solana / on-chain</span>
+    <span><i class="dot" style="background:var(--ext)"></i> External services</span>
+    <span><i class="dot" style="background:var(--ops)"></i> DevOps</span>
+  </div>
+
+  <div class="stack">
+
+    <!-- CLIENTS -->
+    <section class="layer" style="--lc:var(--client)">
+      <div class="layer-head">
+        <h2>Clients &amp; API consumers</h2>
+        <span class="tag" style="background:var(--client-bg);color:var(--client)">web / wallet / bot</span>
+      </div>
+      <p class="layer-note" style="margin-bottom:14px">The frontend lives outside this repo. Clients talk to the API over REST + cookies and subscribe to live updates over Socket.IO. Authentication supports five providers.</p>
+      <div class="chips">
+        <div class="chip"><div class="name">Web / dApp</div><div class="desc">REST + Socket.IO, JWT cookie session</div></div>
+        <div class="chip"><div class="name">Phantom wallet</div><div class="desc">sign-in by signature · <code class="m">tweetnacl</code></div></div>
+        <div class="chip"><div class="name">OKX wallet</div><div class="desc">nonce + <code class="m">ethers.verifyMessage</code></div></div>
+        <div class="chip"><div class="name">Telegram bot</div><div class="desc">Telegraf login link → token verify</div></div>
+        <div class="chip"><div class="name">Google / X</div><div class="desc">OAuth via firebase-admin</div></div>
+      </div>
+    </section>
+
+    <div class="conn"><span class="arrow">▼ ▲</span> HTTPS · <b>REST</b> <code class="m">/api</code> (cookies) &nbsp;·&nbsp; <b>WebSocket</b> Socket.IO (price, tx &amp; balance updates)</div>
+
+    <!-- BACKEND -->
+    <section class="layer" style="--lc:var(--be)">
+      <div class="layer-head">
+        <h2>Backend — NestJS API (Fastify)</h2>
+        <span class="tag" style="background:var(--be-bg);color:var(--be)">port 3001 · prefix /api · Swagger /api/swagger</span>
+      </div>
+      <p class="layer-note" style="margin-bottom:14px">Bootstrapped on the <code>FastifyAdapter</code> with global <code>ValidationPipe</code>, cookie + CORS + multipart plugins, and <code>process.env.TZ = 'UTC'</code>. ~28 feature modules; results modelled with <code>neverthrow</code> <code>Result</code> types.</p>
+
+      <p class="subhead">Domain modules <code>src/&lt;module&gt;</code></p>
+      <div class="grid" style="--accent:var(--be);--accent-bg:var(--be-bg)">
+        <div class="chip accent"><div class="name">auth</div><div class="desc">JWT cookies · 5 providers</div></div>
+        <div class="chip accent"><div class="name">user</div><div class="desc">accounts &amp; roles</div></div>
+        <div class="chip accent"><div class="name">wallet</div><div class="desc">encrypted keypairs</div></div>
+        <div class="chip accent"><div class="name">swap</div><div class="desc">pump.fun / pumpAMM trades</div></div>
+        <div class="chip accent"><div class="name">raydium</div><div class="desc">SDK v2 swap · AMM (+ CLMM/CPMM)</div></div>
+        <div class="chip accent"><div class="name">solana</div><div class="desc">burn · transfer · accounts</div></div>
+        <div class="chip accent"><div class="name">staking</div><div class="desc">delegate · undelegate · withdraw</div></div>
+        <div class="chip accent"><div class="name">stake-account</div><div class="desc">stake keypair store</div></div>
+        <div class="chip accent"><div class="name">transaction-schedule</div><div class="desc">auto buy/sell cron</div></div>
+        <div class="chip accent"><div class="name">tx-schedule-wallet</div><div class="desc">bot wallets</div></div>
+        <div class="chip accent"><div class="name">token-launch</div><div class="desc">launch on 8 platforms</div></div>
+        <div class="chip accent"><div class="name">mint-wallet</div><div class="desc">mint keypairs</div></div>
+        <div class="chip accent"><div class="name">mint-metadata</div><div class="desc">token meta cache</div></div>
+        <div class="chip accent"><div class="name">preset</div><div class="desc">fee / slippage / tip</div></div>
+        <div class="chip accent"><div class="name">referral</div><div class="desc">codes &amp; SOL rewards</div></div>
+        <div class="chip accent"><div class="name">info</div><div class="desc">pool / balance search</div></div>
+        <div class="chip accent"><div class="name">socket</div><div class="desc">realtime gateway</div></div>
+        <div class="chip accent"><div class="name">task</div><div class="desc">SOL price interval</div></div>
+      </div>
+
+      <div class="col-split" style="margin-top:16px">
+        <div>
+          <p class="subhead">Cross-cutting &amp; platform</p>
+          <div class="chips">
+            <div class="chip"><div class="name">AuthGuard</div><div class="desc">JWT from cookie</div></div>
+            <div class="chip"><div class="name">@nestjs/schedule</div><div class="desc">@Interval · SchedulerRegistry</div></div>
+            <div class="chip"><div class="name">BullMQ</div><div class="desc">tx_swap / referral queues</div></div>
+            <div class="chip"><div class="name">Redlock</div><div class="desc">distributed locks</div></div>
+            <div class="chip"><div class="name">Bottleneck</div><div class="desc">RPC rate limiters</div></div>
+            <div class="chip"><div class="name">on-app-start</div><div class="desc">re-arm cron · seed admin</div></div>
+          </div>
+        </div>
+        <div>
+          <p class="subhead">Solana toolkit</p>
+          <div class="chips">
+            <div class="chip"><div class="name">@solana/web3.js</div><div class="desc">tx build / send</div></div>
+            <div class="chip"><div class="name">@coral-xyz/anchor</div><div class="desc">IDL program calls</div></div>
+            <div class="chip"><div class="name">@solana/spl-token</div><div class="desc">ATA · TOKEN-2022</div></div>
+            <div class="chip"><div class="name">raydium-sdk-v2</div><div class="desc">pool swap</div></div>
+            <div class="chip"><div class="name">bs58 · bn.js</div><div class="desc">keys · big numbers</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="conn"><span class="arrow">▼</span> Mongoose ODM (schemas · refs) &nbsp;·&nbsp; ioredis (cache · locks · queue backend)</div>
+
+    <!-- DATA + EXTERNAL -->
+    <div class="duo">
+      <section class="layer" style="--lc:var(--data)">
+        <div class="layer-head">
+          <h2>Data &amp; queue</h2>
+          <span class="tag" style="background:var(--data-bg);color:var(--data)">stateful</span>
+        </div>
+        <div class="chips" style="--accent:var(--data);--accent-bg:var(--data-bg)">
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">MongoDB 8 · Mongoose</div><div class="desc">17 collections: user · wallet · swap · tx-schedule · stake-account · stake-tx · token-launch · preset · referral …</div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Redis · ioredis</div><div class="desc">cache (token program, stake accounts), auth codes, Redlock, rate-limit reservoir</div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">BullMQ on Redis</div><div class="desc"><code class="m">tx_swap_queue</code> · <code class="m">referral_queue</code> — retry w/ backoff</div></div>
+        </div>
+      </section>
+
+      <section class="layer" style="--lc:var(--chain)">
+        <div class="layer-head">
+          <h2>Solana / on-chain</h2>
+          <span class="tag" style="background:var(--chain-bg);color:var(--chain)">RPC · gRPC · MEV</span>
+        </div>
+        <div class="chips" style="--accent:var(--chain);--accent-bg:var(--chain-bg)">
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Shyft RPC / WS / gRPC</div><div class="desc">primary node · rate-limited (Bottleneck)</div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Helius RPC</div><div class="desc">secondary mainnet connection</div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Yellowstone gRPC</div><div class="desc"><code class="m">@triton-one/yellowstone-grpc</code> stream</div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Astralane relay</div><div class="desc">MEV sendTransaction / sendBundle + tip</div></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="conn"><span class="arrow">▼</span> outbound integrations (email · IPFS · auth · scraping)</div>
+
+    <!-- EXTERNAL WEB2 -->
+    <section class="layer" style="--lc:var(--ext)">
+      <div class="layer-head">
+        <h2>External services</h2>
+        <span class="tag" style="background:var(--ext-bg);color:var(--ext)">3rd-party</span>
+      </div>
+      <div class="grid" style="--accent:var(--ext);--accent-bg:var(--ext-bg)">
+        <div class="chip accent"><div class="name">Firebase Admin</div><div class="desc">Google / X token verify</div></div>
+        <div class="chip accent"><div class="name">Resend</div><div class="desc">verification &amp; reset email</div></div>
+        <div class="chip accent"><div class="name">Pinata (IPFS)</div><div class="desc">token image + metadata</div></div>
+        <div class="chip accent"><div class="name">Telegraf</div><div class="desc">Telegram login bot</div></div>
+        <div class="chip accent"><div class="name">Playwright</div><div class="desc">scrape GMGN · MEVX · pump.fun</div></div>
+        <div class="chip accent"><div class="name">OKX / ethers</div><div class="desc">wallet signature auth</div></div>
+      </div>
+    </section>
+
+    <!-- DEVOPS -->
+    <section class="ops">
+      <div class="layer-head" style="margin-bottom:12px">
+        <h2 style="font-size:15px">DevOps &amp; delivery</h2>
+        <span class="tag" style="background:#dde2ea;color:var(--ops)">GitHub Actions · PM2 · SSH</span>
+      </div>
+      <div class="grid">
+        <div class="chip"><div class="name">GitHub Actions</div><div class="desc">deploy-master · deploy-develop</div></div>
+        <div class="chip"><div class="name">SSH deploy</div><div class="desc">appleboy/ssh-action → server</div></div>
+        <div class="chip"><div class="name">PM2</div><div class="desc"><code class="m">solana-trade</code> / <code class="m">dev-velosbot-api</code></div></div>
+        <div class="chip"><div class="name">Yarn · Node 22.11</div><div class="desc">yarn install &amp; build</div></div>
+        <div class="chip"><div class="name">ESLint · Prettier</div><div class="desc">flat config</div></div>
+        <div class="chip"><div class="name">Jest</div><div class="desc">unit / e2e config</div></div>
+        <div class="chip"><div class="name">Swagger</div><div class="desc">auto <code class="m">swagger.json</code> dump</div></div>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="features">
+    <h2 class="ftitle">Core features</h2>
+    <p class="fsub">Five signature flows — beyond CRUD — and how each travels through the architecture layers.</p>
+
+    <!-- FEATURE 1: RAYDIUM SWAP (AMM / CLMM / CPMM) -->
+    <article class="feat" style="--fc:#0e7490; --fc-bg:#e1f1f5">
+      <div class="feat-h">
+        <h3>Raydium swap — route by pool type (AMM · CLMM · CPMM)</h3>
+        <span class="tag" style="background:#e1f1f5;color:#0e7490">RaydiumService.performSwap · SDK v2</span>
+      </div>
+      <p class="feat-desc"><code>POST /api/raydium/swap</code> finds the best pool for the mint pair, reads decimals to scale the raw amount, computes the slippage-bounded minimum output, then builds a V0 transaction and submits it. The pool kind decides which SDK namespace handles compute + swap. <b>AMM (<code>raydium.liquidity.*</code>) is implemented today; CLMM and CPMM are the planned routes on the <code>radium-swap</code> branch.</b></p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">POST /api/raydium/swap</div><div class="nd"><code>SwapDto</code>: fromMint · toMint · amount · slippage</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">Validate</div><div class="nd"><code>amount &gt; 0</code> · <code>0 ≤ slippage ≤ 50</code></div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">fetchBestPool</div><div class="nd"><code>api.fetchPoolByMints</code> · getDecimals → <code>amountInRaw</code> (BN)</div></div>
+        <div class="arr"><span class="al">route</span><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">Pool type?</div><div class="nd">AMM · CLMM · CPMM</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Compute out</div><div class="nd"><code>computeAmountOut</code> → <code>minAmountOut</code> w/ slippage</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Build V0 tx</div><div class="nd">computeBudget 800k / 25k µLamports · sign feePayer + signers</div></div>
+        <div class="arr"><span class="al">send</span><span class="ah">→</span></div>
+        <div class="branch">
+          <div class="brow">
+            <div class="node ok"><div class="nt">✓ Confirmed</div><div class="nd"><code>sendTransaction</code> (maxRetries 3) → return txid · solscan</div></div>
+          </div>
+          <div class="brow">
+            <div class="node bad"><div class="nt">✕ Failed</div><div class="nd">no pool / RPC / confirm error → <code>{ success:false, error }</code></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">route by type</span>
+        <span class="pill hot">AMM · raydium.liquidity.swap <span style="opacity:.7">(live)</span></span>
+        <span class="pill">CLMM · raydium.clmm.swap <span style="opacity:.7">(planned)</span></span>
+        <span class="pill">CPMM · raydium.cpmm.swap <span style="opacity:.7">(planned)</span></span>
+      </div>
+      <div class="detail-row">
+        <span class="lbl">amm keys</span>
+        <span class="pill">AmmV4Keys / AmmV5Keys</span>
+        <span class="pill">getPoolInfoFromRpc</span>
+        <span class="pill">fixedSide: 'in' · TxVersion.V0</span>
+        <span class="pill">confirm 'confirmed'</span>
+      </div>
+
+      <div class="mock-wrap">
+        <div class="mock-cap">Example — swap <b>0.001 SOL → token</b>; the resolver inspects the pool and dispatches to the matching SDK namespace, then returns a single <code>txid</code>.</div>
+        <div class="mock">
+          <div class="panel">
+            <div class="panel-h"><span>⇄ Swap · 0.001 SOL → TOKEN</span><span class="cnt">slippage 0.5%</span></div>
+            <div class="perm">
+              <div class="prow"><span class="cb">✓</span> AMM pool <span class="newtag">routed</span></div>
+              <div class="prow off"><span class="cb e"></span> CLMM pool <span class="newtag" style="color:var(--faint);border-color:var(--border-strong)">planned</span></div>
+              <div class="prow off"><span class="cb e"></span> CPMM pool <span class="newtag" style="color:var(--faint);border-color:var(--border-strong)">planned</span></div>
+              <div class="prow off"><span class="cb e"></span> minAmountOut = computeAmountOut(slippage)</div>
+            </div>
+          </div>
+          <div class="mock-arr"><span class="al">build → send</span><span class="ah">→</span></div>
+          <div class="panel">
+            <div class="panel-h"><span>✦ Result</span><span class="cnt">success: true</span></div>
+            <div class="tiles">
+              <div class="tile new">V0 tx signed <span class="newtag">800k CU</span></div>
+              <div class="tile new">txid ✓ <span class="newtag">CONFIRMED</span></div>
+              <div class="tile">→ solscan.io/tx</div>
+              <div class="tile">maxRetries 3</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+    
+    <!-- FEATURE 2: SWAP EXECUTION -->
+    <article class="feat" style="--fc:#7c3aed; --fc-bg:#f1ebfd">
+      <div class="feat-h">
+        <h3>On-chain swap — pump.fun &amp; pumpAMM via MEV relay</h3>
+        <span class="tag" style="background:#f1ebfd;color:#7c3aed">SwapService.createOnChainTx</span>
+      </div>
+      <p class="feat-desc"><code>POST /api/swap</code> resolves the token program, decrypts the user's wallets, picks a transaction builder by token factory, signs locally, and submits through the Astralane MEV relay — then confirms on-chain and parses the result in a background worker.</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">POST /api/swap</div><div class="nd"><code>createOnChainTx(userId, dto)</code></div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Resolve + decrypt</div><div class="nd">token program (Redis/RPC) · decrypt wallet secrets · mint metadata</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">Factory?</div><div class="nd"><code>TokenFactory.pump</code> vs <code>pumpamm</code></div></div>
+        <div class="arr"><span class="al">build</span><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Build tx</div><div class="nd">Anchor IDL · ComputeBudget · Astralane tip · sign</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Send</div><div class="nd">Astralane <code>sendTransaction</code> (5 rps/key)</div></div>
+        <div class="arr"><span class="al">confirm</span><span class="ah">→</span></div>
+        <div class="branch">
+          <div class="brow">
+            <div class="node ok"><div class="nt">✓ Confirmed</div><div class="nd"><code>onSignature</code> race RPC poll (6s)</div></div>
+            <div class="arr"><span class="ah">→</span></div>
+            <div class="node"><div class="nt">Queue</div><div class="nd">BullMQ <code class="m">tx_swap_queue</code> → parse &amp; save <code>Swap</code></div></div>
+            <div class="arr"><span class="ah">→</span></div>
+            <div class="node"><div class="nt">Emit</div><div class="nd">socket <code>transactionUpdate</code> to user</div></div>
+          </div>
+          <div class="brow">
+            <div class="node bad"><div class="nt">✕ Failed</div><div class="nd">collected into <code>ERRs[]</code> · retry w/ backoff</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">enums</span>
+        <span class="pill hot">SwapType · buy / sell</span>
+        <span class="pill hot">TokenFactory · pump / pumpamm</span>
+        <span class="pill hot">TxType · normal / schedule</span>
+        <span class="pill">PresetKey · 1 / 2 / 3</span>
+      </div>
+      <div class="detail-row">
+        <span class="lbl">compute</span>
+        <span class="pill">pump 160k CU</span>
+        <span class="pill">pumpAMM 200k CU</span>
+        <span class="pill">priorityFee + tip from preset</span>
+        <span class="pill">confirm 6s · poll ×5</span>
+      </div>
+
+      <div class="mock-wrap">
+        <div class="mock-cap">Example — buy on <b>3 wallets</b> with <b>Preset 2</b>; the relay returns <b>OKs / ERRs</b> and each confirmed tx persists to the <code>swap</code> collection.</div>
+        <div class="mock">
+          <div class="panel">
+            <div class="panel-h"><span>⛁ Buy order · Preset 2</span><span class="cnt">3 wallets</span></div>
+            <div class="perm">
+              <div class="prow"><span class="cb">✓</span> Wallet A · 0.05 SOL</div>
+              <div class="prow"><span class="cb">✓</span> Wallet B · 0.05 SOL</div>
+              <div class="prow add"><span class="cb">✓</span> Wallet C · 0.05 SOL <span class="newtag">slippage 30%</span></div>
+              <div class="prow off"><span class="cb e"></span> priorityFee 0.0003 · tip 0.0002</div>
+            </div>
+          </div>
+          <div class="mock-arr"><span class="al">send → confirm</span><span class="ah">→</span></div>
+          <div class="panel">
+            <div class="panel-h"><span>✦ Relay result</span><span class="cnt">2 OK · 1 ERR</span></div>
+            <div class="tiles">
+              <div class="tile new">Wallet A ✓ <span class="newtag">SAVED</span></div>
+              <div class="tile new">Wallet B ✓ <span class="newtag">SAVED</span></div>
+              <div class="tile" style="border-color:#dc2626;background:#fdf1f1;color:#b91c1c">Wallet C ✕ <span class="newtag" style="color:#b91c1c;border-color:#b91c1c">RETRY</span></div>
+              <div class="tile">→ socket update</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- FEATURE 3: SCHEDULED AUTO-TRADING -->
+    <article class="feat" style="--fc:#047857; --fc-bg:#e6f4ef">
+      <div class="feat-h">
+        <h3>Scheduled auto-trading — per-schedule buy/sell cron</h3>
+        <span class="tag" style="background:#e6f4ef;color:#047857">TxScheduleService · SchedulerRegistry</span>
+      </div>
+      <p class="feat-desc">Creating a schedule registers two dynamic cron jobs (<code>tx-schedule:{id}:buy</code> / <code>:sell</code>) at <code>*/{periodSeconds} * * * * *</code>. Each tick picks an eligible wallet, checks for pool migration, and fires a swap. On boot, <code>on-app-start</code> re-arms every enabled schedule (production only).</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">POST /api/tx-schedule</div><div class="nd"><code>createAndSchedule(dto, mintMeta)</code></div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">enableBuy / enableSell?</div><div class="nd"><code>upsertCron</code> per side, else remove</div></div>
+        <div class="arr"><span class="al">every N s</span><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Tick handler</div><div class="nd"><code>toBuyHandler</code> · fetch wallet balances · filter eligible · pick random</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">Pool migrated?</div><div class="nd">pump → pumpamm · re-search pool</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="branch">
+          <div class="brow">
+            <div class="node ok"><div class="nt">✓ Eligible</div><div class="nd">send buy/sell via <code>SwapService</code> → emit socket</div></div>
+          </div>
+          <div class="brow">
+            <div class="node bad"><div class="nt">✕ No funds</div><div class="nd">skip tick · keep RENT buffer (0.003 SOL)</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">cron names</span>
+        <span class="pill hot">tx-schedule:{id}:buy</span>
+        <span class="pill hot">tx-schedule:{id}:sell</span>
+        <span class="pill">expr <code style="background:none;border:none;padding:0;color:inherit">*/{periodSeconds} * * * * *</code></span>
+        <span class="pill">unique index { user, mint }</span>
+      </div>
+      <div class="detail-row">
+        <span class="lbl">settings</span>
+        <span class="pill">periodSeconds (def 5)</span>
+        <span class="pill">minSolAmount · maxSolAmount (random)</span>
+        <span class="pill">DELETE /:id → removeSchedule</span>
+      </div>
+    </article>
+
+    <!-- FEATURE 4: STAKING (two-step) -->
+    <article class="feat" style="--fc:#b45309; --fc-bg:#f8efe2">
+      <div class="feat-h">
+        <h3>Native SOL staking — build-then-sign in two calls</h3>
+        <span class="tag" style="background:#f8efe2;color:#b45309">StakingService · StakeProgram</span>
+      </div>
+      <p class="feat-desc">Each staking action is a pair of endpoints: the first returns an unsigned base64 transaction, the client signs it, and the <code>/sign</code> endpoint submits via Shyft and records a <code>StakeTx</code>. Un-staking decides between deactivating a whole account or splitting it first.</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">POST .../delegate</div><div class="nd"><code>createStakingBase64Tx</code></div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">Stake account?</div><div class="nd">new → create + delegate · existing → transfer + delegate</div></div>
+        <div class="arr"><span class="al">base64 tx</span><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Client signs</div><div class="nd">wallet signs returned tx</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">POST .../delegate/sign</div><div class="nd">submit via Shyft RPC</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="branch">
+          <div class="brow">
+            <div class="node ok"><div class="nt">✓ Confirmed</div><div class="nd">save <code>StakeTx</code> · invalidate <code class="m">STAKE_ACCOUNTS</code></div></div>
+          </div>
+          <div class="brow">
+            <div class="node bad"><div class="nt">✕ Error</div><div class="nd">record <code>isError = true</code></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">actions</span>
+        <span class="pill hot">delegate (+ /sign)</span>
+        <span class="pill hot">undelegate (+ /sign)</span>
+        <span class="pill hot">withdraw (+ /sign)</span>
+        <span class="pill">GET /staking/status/:wallet</span>
+      </div>
+      <div class="detail-row">
+        <span class="lbl">undelegate logic</span>
+        <span class="pill">active = deactivationEpoch == RUST_U64_MAX</span>
+        <span class="pill">full → deactivate · partial → split + deactivate</span>
+        <span class="pill">StakeTxType · stake / un_stake / withdraw</span>
+      </div>
+    </article>
+
+    <!-- FEATURE 5: REALTIME PRICE FEED -->
+    <article class="feat" style="--fc:#0369a1; --fc-bg:#e3f0f8">
+      <div class="feat-h">
+        <h3>Realtime SOL price feed &amp; live dashboard</h3>
+        <span class="tag" style="background:#e3f0f8;color:#0369a1">@Interval(3000) · Socket.IO</span>
+      </div>
+      <p class="feat-desc"><code>TasksService.handleInterval</code> runs every 3 s, fetches the SOL price, broadcasts <code>priceSOL</code> to every connected client, and upserts a <code>PriceSol</code> record (<code>key = 'price-sol-latest'</code>). The same gateway pushes per-user tx, balance and notification events.</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">@Interval(3000)</div><div class="nd"><code>handleInterval()</code> every 3 s</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">getPriceSOL ok?</div><div class="nd">neverthrow <code>Result</code> · isErr → log &amp; skip</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="branch">
+          <div class="brow">
+            <div class="node ok"><div class="nt">✓ Price</div><div class="nd"><code>sendPriceSol(price)</code> → emit <code>priceSOL</code> to all</div></div>
+            <div class="arr"><span class="ah">→</span></div>
+            <div class="node"><div class="nt">Persist</div><div class="nd">upsert <code>PriceSol</code> in MongoDB</div></div>
+          </div>
+          <div class="brow">
+            <div class="node bad"><div class="nt">✕ Fetch error</div><div class="nd">log &amp; wait for next tick</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">socket events</span>
+        <span class="pill hot">priceSOL</span>
+        <span class="pill hot">transactionUpdate</span>
+        <span class="pill hot">balanceWallet</span>
+        <span class="pill">notification-to-user / -to-all</span>
+        <span class="pill">room <code style="background:none;border:none;padding:0;color:inherit">user_${userId}</code></span>
+      </div>
+
+      <div class="mock-wrap">
+        <div class="mock-cap">Live client view fed by <code>priceSOL</code> + per-user events — KPI tiles plus a SOL-price tick chart.</div>
+
+        <div class="kpi-row">
+          <div class="kpi"><div class="k-v">$148.20</div><div class="k-l">SOL price (live)</div></div>
+          <div class="kpi"><div class="k-v">3s</div><div class="k-l">Refresh interval</div></div>
+          <div class="kpi"><div class="k-v">42</div><div class="k-l">Active schedules</div></div>
+          <div class="kpi"><div class="k-v">2 OK</div><div class="k-l">Last swap batch</div></div>
+        </div>
+
+        <div class="chartbox">
+          <div class="chart-h">SOL price · last 12 ticks — <code>sendPriceSol(price)</code></div>
+          <div class="chart-plot">
+            <div class="y-axis"><span>150</span><span>149</span><span>148</span><span>147</span><span>146</span></div>
+            <div class="plot-col">
+              <div class="bars">
+                <div class="bar"><i style="height:45%"></i></div>
+                <div class="bar"><i style="height:52%"></i></div>
+                <div class="bar"><i style="height:48%"></i></div>
+                <div class="bar"><i style="height:60%"></i></div>
+                <div class="bar"><i style="height:66%"></i></div>
+                <div class="bar"><i style="height:58%"></i></div>
+                <div class="bar"><i style="height:72%"></i></div>
+                <div class="bar"><i style="height:64%"></i></div>
+                <div class="bar"><i style="height:70%"></i></div>
+                <div class="bar"><i style="height:78%"></i></div>
+                <div class="bar"><i style="height:74%"></i></div>
+                <div class="bar"><i style="height:82%"></i></div>
+              </div>
+              <div class="xlabels">
+                <span>t1</span><span>t2</span><span>t3</span><span>t4</span><span>t5</span><span>t6</span><span>t7</span><span>t8</span><span>t9</span><span>t10</span><span>t11</span><span>t12</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+  </section>
+
+  <footer class="note">
+    Single NestJS backend (no separate frontend in repo). Clients reach it over <code>REST /api</code> + <code>Socket.IO</code>;
+    it persists to <code>MongoDB</code>, caches / queues / locks in <code>Redis</code> (BullMQ · Redlock · Bottleneck),
+    submits Solana transactions through <code>Shyft</code> / <code>Helius</code> / <code>Yellowstone gRPC</code> and the <code>Astralane</code> MEV relay,
+    and offloads auth, email, IPFS &amp; scraping to external services. Deployed via GitHub Actions → SSH → PM2.
+  </footer>
+
+</div>
+</body>
+</html>

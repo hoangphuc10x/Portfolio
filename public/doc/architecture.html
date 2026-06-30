@@ -1,0 +1,829 @@
+<title>HR-AIOT — System Architecture</title>
+<meta name="description" content="Layered architecture of the HR-AIOT management system: Next.js frontend, NestJS backend, MySQL + Redis, and external services.">
+
+<style>
+  :root {
+    --ground: #f6f7f9;
+    --surface: #ffffff;
+    --ink: #16202e;
+    --muted: #5d6b7e;
+    --faint: #8c98a8;
+    --border: #e3e7ec;
+    --border-strong: #cdd4dd;
+
+    --fe: #4f46e5;      /* indigo  - frontend */
+    --fe-bg: #eef0fe;
+    --be: #0d9488;      /* teal    - backend  */
+    --be-bg: #e3f4f1;
+    --data: #b45309;    /* amber   - data     */
+    --data-bg: #f9efe2;
+    --ext: #be185d;     /* rose    - external */
+    --ext-bg: #fbe9f1;
+    --ops: #475569;     /* slate   - devops   */
+    --ops-bg: #eef1f5;
+
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 56px 28px 80px;
+  }
+
+  /* ---- masthead ---- */
+  header.mast {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px 24px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 18px;
+  }
+  .mast h1 {
+    font-size: clamp(26px, 4vw, 38px);
+    margin: 0;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  .mast .sub {
+    color: var(--muted);
+    font-size: 15px;
+    margin-top: 4px;
+  }
+  .mast .meta {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--faint);
+    text-align: right;
+    line-height: 1.7;
+  }
+  .mast .meta b { color: var(--muted); font-weight: 600; }
+
+  /* ---- legend ---- */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin: 22px 0 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  /* ---- stack ---- */
+  .stack { display: flex; flex-direction: column; gap: 0; margin-top: 14px; }
+
+  .layer {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--lc, var(--border-strong));
+    border-radius: 10px;
+    padding: 18px 20px 20px;
+  }
+  .layer-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .layer-head h2 {
+    font-size: 16px;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .layer-note { color: var(--muted); font-size: 13.5px; margin: 0; }
+
+  /* connector arrows between layers */
+  .conn {
+    align-self: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--faint);
+    padding: 9px 0;
+    text-align: center;
+    line-height: 1.4;
+  }
+  .conn b { color: var(--be); font-weight: 600; }
+  .conn .arrow { display: block; font-size: 15px; color: var(--border-strong); }
+
+  /* chip grids */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+  }
+  .chip {
+    border: 1px solid var(--border);
+    background: var(--ground);
+    border-radius: 8px;
+    padding: 9px 11px;
+  }
+  .chip .name {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .chip .desc {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .chip.accent { background: var(--accent-bg); border-color: transparent; }
+  .chip.accent .name { color: var(--accent); }
+
+  .col-split {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 18px;
+  }
+  @media (max-width: 720px) { .col-split { grid-template-columns: 1fr; } }
+
+  .subhead {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin: 0 0 8px;
+  }
+
+  /* two-up for data + external */
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 640px) { .duo { grid-template-columns: 1fr; } }
+
+  /* devops footer */
+  .ops {
+    margin-top: 26px;
+    border: 1px dashed var(--border-strong);
+    border-radius: 10px;
+    padding: 16px 20px;
+    background: var(--ops-bg);
+  }
+  .ops .chip { background: var(--surface); }
+
+  /* ---- core features / flows ---- */
+  .features { margin-top: 36px; }
+  .features > .ftitle {
+    font-size: 18px;
+    letter-spacing: -0.01em;
+    margin: 0 0 4px;
+  }
+  .features > .fsub { color: var(--muted); font-size: 13.5px; margin: 0 0 16px; }
+
+  .feat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--fc, var(--border-strong));
+    border-radius: 10px;
+    padding: 18px 20px 20px;
+  }
+  .feat + .feat { margin-top: 14px; }
+  .feat-h {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .feat-h h3 { font-size: 15.5px; margin: 0; letter-spacing: -0.01em; }
+  .feat-desc { color: var(--muted); font-size: 13px; margin: 5px 0 0; }
+
+  /* flowchart — wraps to new rows, never scrolls horizontally */
+  .flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 2px;
+    margin: 16px 0 4px;
+  }
+  .node {
+    flex: 0 0 auto;
+    width: 154px;
+    background: var(--surface);
+    border: 1.5px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 9px 11px;
+  }
+  .node .nt {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 1.25;
+    color: var(--ink);
+  }
+  .node .nd { font-size: 10.5px; color: var(--muted); margin-top: 3px; line-height: 1.35; }
+  .node .nd code { font-family: var(--mono); font-size: 10px; color: var(--ink); }
+  .node.start { border-color: var(--fc); }
+  .node.start .nt { color: var(--fc); }
+  .node.decision { border-style: dashed; border-color: var(--fc); }
+  .node.ok { border-color: #16a34a; background: #f0fbf4; }
+  .node.ok .nt { color: #15803d; }
+  .node.bad { border-color: #dc2626; background: #fdf1f1; }
+  .node.bad .nt { color: #b91c1c; }
+
+  .arr {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+  }
+  .arr .al {
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    text-align: center;
+    line-height: 1.1;
+    color: var(--faint);
+    margin-bottom: 1px;
+    max-width: 60px;
+  }
+  .arr .ah { font-size: 16px; line-height: 1; color: var(--border-strong); }
+
+  /* a decision splits into stacked outcome rows */
+  .branch { flex: 0 0 auto; display: flex; flex-direction: column; gap: 9px; }
+  .brow { display: flex; flex-wrap: wrap; align-items: center; gap: 9px 2px; }
+
+  /* narrow screens: stack the flow into a vertical column with DOWN arrows */
+  @media (max-width: 900px) {
+    .flow { flex-direction: column; align-items: center; gap: 0; }
+    .flow .node { width: auto; max-width: 100%; }
+    .flow .arr {
+      flex-direction: row;
+      justify-content: center;
+      width: 100%;
+      min-width: 0;
+      padding: 7px 0;
+      gap: 7px;
+    }
+    .flow .arr .al { margin-bottom: 0; max-width: none; }
+    .flow .arr .ah { transform: rotate(90deg); }
+    .branch { width: auto; align-items: center; }
+    .brow { flex-direction: column; align-items: center; gap: 0; }
+  }
+  .detail-row {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .detail-row .lbl {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--faint);
+    margin-right: 4px;
+  }
+  .pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background: var(--ground);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .pill.hot { background: var(--fc-bg); border-color: transparent; color: var(--fc); }
+
+  /* permission-grant mock-up: admin ticks boxes → user dashboard grows */
+  .mock-wrap { margin-top: 18px; border-top: 1px dashed var(--border); padding-top: 14px; }
+  .mock-cap { font-size: 12.5px; color: var(--muted); margin-bottom: 12px; }
+  .mock-cap b { color: var(--ink); }
+  .mock {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.2fr);
+    gap: 12px;
+    align-items: stretch;
+  }
+  @media (max-width: 720px) { .mock { grid-template-columns: 1fr; } }
+
+  .panel {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .panel-h {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-size: 11.5px; font-weight: 700;
+    padding: 8px 11px;
+    background: var(--ground);
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-h .cnt {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 700; color: var(--fc);
+  }
+  .perm { padding: 3px 11px 7px; }
+  .prow {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 12px; color: var(--ink);
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .perm .prow:last-child { border-bottom: none; }
+  .prow.off { color: var(--faint); }
+  .prow.add {
+    margin: 0 -11px; padding-left: 11px; padding-right: 11px;
+    background: var(--fc-bg);
+  }
+  .cb {
+    flex: 0 0 auto;
+    width: 15px; height: 15px; border-radius: 4px;
+    background: var(--fc); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800;
+  }
+  .cb.e { background: transparent; border: 1.5px solid var(--border-strong); }
+  .newtag {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 8.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--fc);
+    background: var(--surface);
+    border: 1px solid var(--fc);
+    border-radius: 10px;
+    padding: 1px 6px;
+    white-space: nowrap;
+  }
+  .mock-arr {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-width: 42px;
+  }
+  .mock-arr .al {
+    font-size: 8px; text-transform: uppercase; letter-spacing: 0.03em;
+    color: var(--faint); text-align: center; line-height: 1.1; margin-bottom: 2px;
+  }
+  .mock-arr .ah { font-size: 18px; color: var(--fc); }
+  @media (max-width: 720px) { .mock-arr .ah { transform: rotate(90deg); } }
+
+  .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 11px; }
+  .tile {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--ground);
+    padding: 10px 11px;
+    font-size: 11.5px; font-weight: 600; color: var(--ink);
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    min-height: 44px;
+  }
+  .tile.new { border-color: var(--fc); background: var(--fc-bg); color: var(--fc); }
+
+  /* dashboard KPIs + mini chart */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  @media (max-width: 560px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  .kpi {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--ground);
+    padding: 10px 11px;
+  }
+  .kpi .k-v {
+    font-size: 19px; font-weight: 700; color: var(--fc);
+    font-variant-numeric: tabular-nums; letter-spacing: -0.01em; line-height: 1.1;
+  }
+  .kpi .k-l {
+    font-size: 9.5px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.04em; margin-top: 3px;
+  }
+  .chartbox {
+    margin-top: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    padding: 12px 14px 10px;
+    overflow-x: auto;
+  }
+  .chart-h {
+    font-size: 10.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--muted); margin-bottom: 10px;
+  }
+  /* compact bar chart with X + Y axes */
+  .chart-plot { display: flex; align-items: flex-start; gap: 7px; width: fit-content; }
+  .y-axis {
+    height: 96px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    text-align: right;
+    font-family: var(--mono); font-size: 8px; color: var(--faint);
+  }
+  .plot-col { display: flex; flex-direction: column; gap: 4px; }
+  .bars {
+    display: flex; align-items: flex-end; gap: 8px;
+    height: 96px;
+    padding: 0 9px;
+    border-left: 1.5px solid var(--border-strong);
+    border-bottom: 1.5px solid var(--border-strong);
+  }
+  .bar { display: flex; align-items: flex-end; height: 100%; }
+  .bar i { width: 22px; background: var(--fc); border-radius: 3px 3px 0 0; opacity: 0.85; display: block; }
+  .xlabels { display: flex; gap: 8px; padding: 0 9px; }
+  .xlabels span { width: 22px; text-align: center; font-family: var(--mono); font-size: 8px; color: var(--faint); }
+
+  footer.note {
+    margin-top: 30px;
+    font-size: 12.5px;
+    color: var(--faint);
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+  footer.note code { font-family: var(--mono); color: var(--muted); }
+</style>
+
+<div class="page">
+
+  <header class="mast">
+    <div>
+      <h1>HR-AIOT — System Architecture</h1>
+      <div class="sub">Human-resources platform · monorepo · containerized</div>
+    </div>
+    <div class="meta">
+      <div><b>frontend</b> Next.js 15 · React 19</div>
+      <div><b>backend</b> NestJS 11 · TypeORM</div>
+      <div><b>data</b> MySQL 8 · Redis</div>
+    </div>
+  </header>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--fe)"></i> Frontend</span>
+    <span><i class="dot" style="background:var(--be)"></i> Backend</span>
+    <span><i class="dot" style="background:var(--data)"></i> Data stores</span>
+    <span><i class="dot" style="background:var(--ext)"></i> External services</span>
+    <span><i class="dot" style="background:var(--ops)"></i> DevOps</span>
+  </div>
+
+  <div class="stack">
+
+    <!-- USERS -->
+    <section class="layer" style="--lc:#94a3b8">
+      <div class="layer-head">
+        <h2>Clients</h2>
+        <span class="tag" style="background:#eef1f5;color:var(--ops)">browser</span>
+      </div>
+      <div class="chips">
+        <div class="chip"><div class="name">Employees</div><div class="desc">attendance, leave requests, profile</div></div>
+        <div class="chip"><div class="name">Managers / HR</div><div class="desc">approvals, dashboards, reports</div></div>
+        <div class="chip"><div class="name">Admins</div><div class="desc">users, departments, permissions</div></div>
+      </div>
+    </section>
+
+    <div class="conn"><span class="arrow">▼</span> HTTPS · server-rendered pages</div>
+
+    <!-- FRONTEND -->
+    <section class="layer" style="--lc:var(--fe)">
+      <div class="layer-head">
+        <h2>Frontend — Next.js App Router</h2>
+        <span class="tag" style="background:var(--fe-bg);color:var(--fe)">port 3001 · custom node server</span>
+      </div>
+      <p class="layer-note" style="margin-bottom:14px">Custom <code style="font-family:var(--mono)">server.js</code> hosts Next.js <em>and</em> a Socket.IO server. Edge <code style="font-family:var(--mono)">middleware.ts</code> guards routes with <code style="font-family:var(--mono)">jose</code> / JWT.</p>
+
+      <div class="col-split">
+        <div>
+          <p class="subhead">Routes &amp; pages</p>
+          <div class="grid" style="--accent:var(--fe);--accent-bg:var(--fe-bg)">
+            <div class="chip accent"><div class="name">(auth)</div><div class="desc">login, forgot/reset, activate, change-pwd</div></div>
+            <div class="chip accent"><div class="name">dashboard</div><div class="desc">charts &amp; KPIs (recharts)</div></div>
+            <div class="chip accent"><div class="name">attendance</div><div class="desc">+ manage-attendance</div></div>
+            <div class="chip accent"><div class="name">leave-requests</div><div class="desc">+ summary view</div></div>
+            <div class="chip accent"><div class="name">employee</div><div class="desc">directory &amp; profiles</div></div>
+            <div class="chip accent"><div class="name">department</div><div class="desc">org structure</div></div>
+            <div class="chip accent"><div class="name">permissions</div><div class="desc">role / access control</div></div>
+            <div class="chip accent"><div class="name">[lang]</div><div class="desc">i18n en / vi dictionaries</div></div>
+          </div>
+        </div>
+        <div>
+          <p class="subhead">Client libraries</p>
+          <div class="chips">
+            <div class="chip"><div class="name">zustand</div><div class="desc">state management</div></div>
+            <div class="chip"><div class="name">axios + qs</div><div class="desc">REST client</div></div>
+            <div class="chip"><div class="name">socket.io-client</div><div class="desc">realtime</div></div>
+            <div class="chip"><div class="name">i18next</div><div class="desc">en / vi locale</div></div>
+            <div class="chip"><div class="name">Tailwind v4</div><div class="desc">styling</div></div>
+            <div class="chip"><div class="name">recharts</div><div class="desc">data viz</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="conn">
+      <span class="arrow">▼ ▲</span>
+      <b>REST</b> (axios → /api) &nbsp;·&nbsp; <b>WebSocket</b> (Socket.IO, realtime notifications)
+    </div>
+
+    <!-- BACKEND -->
+    <section class="layer" style="--lc:var(--be)">
+      <div class="layer-head">
+        <h2>Backend — NestJS API</h2>
+        <span class="tag" style="background:var(--be-bg);color:var(--be)">port 3000 · REST + WS · Swagger</span>
+      </div>
+      <p class="layer-note" style="margin-bottom:14px">Modular domain architecture. Cross-cutting concerns handled by global guards, interceptors, filters and a WebSocket gateway.</p>
+
+      <p class="subhead">Domain modules <code style="font-family:var(--mono);text-transform:none">src/domain</code></p>
+      <div class="grid" style="--accent:var(--be);--accent-bg:var(--be-bg)">
+        <div class="chip accent"><div class="name">auth</div><div class="desc">JWT · Passport · bcrypt</div></div>
+        <div class="chip accent"><div class="name">users</div><div class="desc">employee accounts</div></div>
+        <div class="chip accent"><div class="name">departments</div><div class="desc">org units</div></div>
+        <div class="chip accent"><div class="name">attendances</div><div class="desc">check-in / out</div></div>
+        <div class="chip accent"><div class="name">leave-requests</div><div class="desc">apply &amp; approve</div></div>
+        <div class="chip accent"><div class="name">permissions</div><div class="desc">roles &amp; access</div></div>
+        <div class="chip accent"><div class="name">notifications</div><div class="desc">realtime + email</div></div>
+        <div class="chip accent"><div class="name">dashboard</div><div class="desc">aggregations</div></div>
+        <div class="chip accent"><div class="name">audit-logs</div><div class="desc">activity trail</div></div>
+        <div class="chip accent"><div class="name">file-upload</div><div class="desc">avatars · imports</div></div>
+      </div>
+
+      <div class="col-split" style="margin-top:16px">
+        <div>
+          <p class="subhead">Cross-cutting <code style="font-family:var(--mono);text-transform:none">src/common</code></p>
+          <div class="chips">
+            <div class="chip"><div class="name">guards</div><div class="desc">JWT / role auth</div></div>
+            <div class="chip"><div class="name">interceptors</div><div class="desc">response shaping</div></div>
+            <div class="chip"><div class="name">filters</div><div class="desc">exception handling</div></div>
+            <div class="chip"><div class="name">repositories</div><div class="desc">data access</div></div>
+          </div>
+        </div>
+        <div>
+          <p class="subhead">Platform services</p>
+          <div class="chips">
+            <div class="chip"><div class="name">WS Gateway</div><div class="desc">socket.io</div></div>
+            <div class="chip"><div class="name">@nestjs/schedule</div><div class="desc">cron jobs</div></div>
+            <div class="chip"><div class="name">event-emitter</div><div class="desc">domain events</div></div>
+            <div class="chip"><div class="name">Winston</div><div class="desc">logging</div></div>
+            <div class="chip"><div class="name">ExcelJS · csv</div><div class="desc">exports</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="conn"><span class="arrow">▼</span> TypeORM (entities · migrations · seeds) &nbsp;·&nbsp; cache-manager</div>
+
+    <!-- DATA + EXTERNAL -->
+    <div class="duo">
+      <section class="layer" style="--lc:var(--data)">
+        <div class="layer-head">
+          <h2>Data stores</h2>
+          <span class="tag" style="background:var(--data-bg);color:var(--data)">stateful</span>
+        </div>
+        <div class="chips" style="--accent:var(--data);--accent-bg:var(--data-bg)">
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">MySQL 8</div><div class="desc">primary database via TypeORM · port 3307→3306</div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Redis</div><div class="desc">cache-manager store · sessions · port 6379</div></div>
+        </div>
+      </section>
+
+      <section class="layer" style="--lc:var(--ext)">
+        <div class="layer-head">
+          <h2>External services</h2>
+          <span class="tag" style="background:var(--ext-bg);color:var(--ext)">3rd-party</span>
+        </div>
+        <div class="chips" style="--accent:var(--ext);--accent-bg:var(--ext-bg)">
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Cloudinary</div><div class="desc">image / file storage (multer-storage)</div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">SMTP — Nodemailer</div><div class="desc">transactional email (activation, reset)</div></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- DEVOPS -->
+    <section class="ops">
+      <div class="layer-head" style="margin-bottom:12px">
+        <h2 style="font-size:15px">DevOps &amp; delivery</h2>
+        <span class="tag" style="background:#dfe4ea;color:var(--ops)">docker-compose · CI/CD</span>
+      </div>
+      <div class="grid">
+        <div class="chip"><div class="name">Docker Compose</div><div class="desc">backend · frontend · mysql · redis</div></div>
+        <div class="chip"><div class="name">GitHub Actions</div><div class="desc">backend-ci · frontend-ci · cd</div></div>
+        <div class="chip"><div class="name">Vercel</div><div class="desc">frontend hosting</div></div>
+        <div class="chip"><div class="name">Render</div><div class="desc">backend hosting</div></div>
+        <div class="chip"><div class="name">Husky · commitlint</div><div class="desc">git hooks · conventional commits</div></div>
+        <div class="chip"><div class="name">ESLint · Prettier</div><div class="desc">lint-staged</div></div>
+        <div class="chip"><div class="name">Jest</div><div class="desc">backend unit / e2e tests</div></div>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="features">
+    <h2 class="ftitle">Core features</h2>
+    <p class="fsub">Three key business flows and how each one travels through the architecture layers.</p>
+
+    <!-- FEATURE 1: PERMISSIONS -->
+    <article class="feat" style="--fc:#7c3aed; --fc-bg:#f1ebfd">
+      <div class="feat-h">
+        <h3>Authorization — admin grants features by ticking boxes</h3>
+        <span class="tag" style="background:#f1ebfd;color:#7c3aed">RBAC + permission matrix</span>
+      </div>
+      <p class="feat-desc">The admin opens an employee's permission modal and ticks boxes in a grouped checkbox grid to grant or revoke features. Saving writes an audit log and pushes a realtime notification to that employee.</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">Admin UI</div><div class="nd">opens <code>UserPermissionEditModal</code> — grouped checkbox grid</div></div>
+        <div class="arr"><span class="al">tick &amp; save</span><span class="ah">→</span></div>
+        <div class="node"><div class="nt">API</div><div class="nd"><code>PATCH /permissions</code> with permission <code>id[]</code></div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">Role Guard</div><div class="nd"><code>RoleGuard</code> + <code>@Roles(ADMIN)</code></div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="branch">
+          <div class="brow">
+            <div class="node ok"><div class="nt">✓ Allowed</div><div class="nd">update <code>user_permissions</code> + write <code>audit_logs</code></div></div>
+            <div class="arr"><span class="ah">→</span></div>
+            <div class="node"><div class="nt">Notify</div><div class="nd">socket <code>CHANGE_USER_PERMISSION</code> to employee</div></div>
+          </div>
+          <div class="brow">
+            <div class="node bad"><div class="nt">✕ Denied</div><div class="nd"><code>403 Forbidden</code> — role not allowed</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">3 permission tiers</span>
+        <span class="pill hot">Role: ADMIN · STAFF</span>
+        <span class="pill hot">PermissionEnum · 14 global permissions</span>
+        <span class="pill hot">DepartmentPermissionEnum · 8 department-scoped</span>
+        <span class="pill">Position: HEAD · DEPUTY · EMPLOYEE</span>
+      </div>
+      <div class="detail-row">
+        <span class="lbl">tables</span>
+        <span class="pill">user_permissions</span>
+        <span class="pill">department_permissions</span>
+        <span class="pill">user_department_permissions</span>
+      </div>
+
+      <div class="mock-wrap">
+        <div class="mock-cap">Example — admin ticks <b>2 more</b> permissions for <b>User A</b>, and <b>User A</b>'s dashboard grows from <b>3 → 5</b> features.</div>
+        <div class="mock">
+
+          <!-- ADMIN: permission checkbox panel -->
+          <div class="panel">
+            <div class="panel-h"><span>⚙ Permissions · User A</span><span class="cnt">5 / 14 granted</span></div>
+            <div class="perm">
+              <div class="prow"><span class="cb">✓</span> View employees</div>
+              <div class="prow"><span class="cb">✓</span> View attendance</div>
+              <div class="prow"><span class="cb">✓</span> View leave requests</div>
+              <div class="prow add"><span class="cb">✓</span> Approve leave requests <span class="newtag">just ticked</span></div>
+              <div class="prow add"><span class="cb">✓</span> Create employee <span class="newtag">just ticked</span></div>
+              <div class="prow off"><span class="cb e"></span> Delete employee</div>
+              <div class="prow off"><span class="cb e"></span> Create department</div>
+            </div>
+          </div>
+
+          <!-- arrow -->
+          <div class="mock-arr"><span class="al">save → grant</span><span class="ah">→</span></div>
+
+          <!-- USER: dashboard with new features at the bottom -->
+          <div class="panel">
+            <div class="panel-h"><span>▦ User A · Dashboard</span><span class="cnt">3 → 5 features</span></div>
+            <div class="tiles">
+              <div class="tile">Employees</div>
+              <div class="tile">Attendance</div>
+              <div class="tile">Leave requests</div>
+              <div class="tile new">Approve leave <span class="newtag">NEW</span></div>
+              <div class="tile new">Add employee <span class="newtag">NEW</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </article>
+
+    <!-- FEATURE 2: REPORTING & ANALYTICS -->
+    <article class="feat" style="--fc:#047857; --fc-bg:#e6f4ef">
+      <div class="feat-h">
+        <h3>Reporting &amp; analytics — Excel exports + live dashboard</h3>
+        <span class="tag" style="background:#e6f4ef;color:#047857">ExcelJS · fast-csv · recharts</span>
+      </div>
+      <p class="feat-desc">Attendance is aggregated server-side (skipping weekends, deducting a 1-hour lunch break) into a multi-sheet Excel workbook, while the dashboard turns the same data into live KPIs and charts.</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">Export request</div><div class="nd"><code>GET /attendances/export</code> — by month/year or employee <code>code</code></div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Aggregate</div><div class="nd">count on-time / late / leave-early / absent · skip weekends · −1h lunch</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">ExcelJS</div><div class="nd">multi-sheet: <b>Summary</b> + per-employee / per-date detail</div></div>
+        <div class="arr"><span class="al">stream</span><span class="ah">→</span></div>
+        <div class="node ok"><div class="nt">Download</div><div class="nd"><code>Content-Disposition</code> → <code>.xlsx</code> file</div></div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">summary columns</span>
+        <span class="pill">Code</span>
+        <span class="pill">Name</span>
+        <span class="pill">On time</span>
+        <span class="pill">Late</span>
+        <span class="pill">Leave early</span>
+        <span class="pill">Absent</span>
+        <span class="pill">On leave</span>
+        <span class="pill">Total days</span>
+      </div>
+
+      <div class="mock-wrap">
+        <div class="mock-cap">Live dashboard (<b>recharts</b>) — KPIs from <code>getDashboardOverview()</code> plus department, top-absentee and monthly-absence charts.</div>
+
+        <div class="kpi-row">
+          <div class="kpi"><div class="k-v">128</div><div class="k-l">Total employees</div></div>
+          <div class="kpi"><div class="k-v">6</div><div class="k-l">Absent today</div></div>
+          <div class="kpi"><div class="k-v">34</div><div class="k-l">Absent this month</div></div>
+          <div class="kpi"><div class="k-v">3.2%</div><div class="k-l">Avg absence rate</div></div>
+        </div>
+
+        <div class="chartbox">
+          <div class="chart-h">Monthly absences · 2026 — <code style="font-family:var(--mono);text-transform:none">getMonthlyAbsences(year)</code></div>
+          <div class="chart-plot">
+            <div class="y-axis"><span>40</span><span>30</span><span>20</span><span>10</span><span>0</span></div>
+            <div class="plot-col">
+              <div class="bars">
+                <div class="bar"><i style="height:40%"></i></div>
+                <div class="bar"><i style="height:55%"></i></div>
+                <div class="bar"><i style="height:32%"></i></div>
+                <div class="bar"><i style="height:68%"></i></div>
+                <div class="bar"><i style="height:48%"></i></div>
+                <div class="bar"><i style="height:80%"></i></div>
+                <div class="bar"><i style="height:60%"></i></div>
+                <div class="bar"><i style="height:38%"></i></div>
+                <div class="bar"><i style="height:52%"></i></div>
+                <div class="bar"><i style="height:72%"></i></div>
+                <div class="bar"><i style="height:44%"></i></div>
+                <div class="bar"><i style="height:28%"></i></div>
+              </div>
+              <div class="xlabels">
+                <span>T1</span><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>T8</span><span>T9</span><span>T10</span><span>T11</span><span>T12</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- FEATURE 3: ATTENDANCE REMINDER -->
+    <article class="feat" style="--fc:#ea580c; --fc-bg:#fbe7da">
+      <div class="feat-h">
+        <h3>Automatic daily attendance reminders</h3>
+        <span class="tag" style="background:#fbe7da;color:#ea580c">@Cron · Asia/Ho_Chi_Minh · Mon–Fri</span>
+      </div>
+      <p class="feat-desc">Two cron jobs in <code style="font-family:var(--mono)">NotificationsService</code> scan for <em>active employees who haven't clocked in/out yet</em> and nudge them over socket — without bothering those who already did.</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">Cron trigger</div><div class="nd">VN time, weekdays only (Mon–Fri)</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">Query</div><div class="nd"><code>findUsersWithoutCheckIn / Out</code> — clocked already?</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="branch">
+          <div class="brow">
+            <div class="node"><div class="nt">Not yet clocked</div><div class="nd">active user still missing today's record</div></div>
+            <div class="arr"><span class="ah">→</span></div>
+            <div class="node"><div class="nt">Emit</div><div class="nd">socket <code>CHECK_IN / OUT_REMINDER</code></div></div>
+            <div class="arr"><span class="ah">→</span></div>
+            <div class="node"><div class="nt">Save</div><div class="nd"><code>createBulk</code> → notification inbox</div></div>
+          </div>
+          <div class="brow">
+            <div class="node ok"><div class="nt">✓ Already clocked</div><div class="nd">skipped — no reminder sent</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">schedule</span>
+        <span class="pill hot">Check-in reminder · <code style="background:none;border:none;padding:0;color:inherit">0 7 9 * * 1-5</code> (09:07)</span>
+        <span class="pill hot">Check-out reminder · <code style="background:none;border:none;padding:0;color:inherit">0 30 17 * * 1-5</code> (17:30)</span>
+      </div>
+    </article>
+  </section>
+
+  <footer class="note">
+    Monorepo root orchestrates both apps. &nbsp;Frontend ↔ Backend over <code>REST</code> + <code>Socket.IO</code>;
+    backend persists to <code>MySQL</code>, caches in <code>Redis</code>, and offloads files/email to Cloudinary &amp; SMTP.
+  </footer>
+
+</div>

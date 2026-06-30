@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wordbee — Localization Platform Architecture</title>
+<meta name="description" content="Architecture of the Wordbee Translator localization platform: multi-tenant .NET / ASP.NET Core backend, React editor, Translation Memory + Machine Translation, workflow automation (Standard vs Codyt), async microservices, and the Unity / Unreal / Google Sheets / Claude AI integrations.">
+<style>
+  :root {
+    --ground: #f6f5f1;
+    --surface: #fffefb;
+    --ink: #1b2027;
+    --muted: #616a78;
+    --faint: #8a93a0;
+    --border: #e6e1d6;
+    --border-strong: #d2ccbf;
+
+    --client: #475569;   /* slate  */
+    --client-bg: #eef1f5;
+    --fe: #2c74d6;       /* blue — React frontend */
+    --fe-bg: #e7f0fb;
+    --be: #b9741a;       /* honey deep — .NET backend */
+    --be-bg: #f8ecd9;
+    --async: #7c3aed;    /* violet — messaging / workflow */
+    --async-bg: #f1ebfd;
+    --data: #0d9488;     /* teal — data & search */
+    --data-bg: #e0f3f0;
+    --integ: #047857;    /* emerald — my integrations */
+    --integ-bg: #e6f4ef;
+    --ops: #334155;      /* slate dark */
+    --ops-bg: #eef1f5;
+
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 52px 26px 80px; }
+
+  /* ---- masthead ---- */
+  header.mast {
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    justify-content: space-between; gap: 12px 24px;
+    border-bottom: 2px solid var(--ink); padding-bottom: 18px;
+  }
+  .mast h1 { font-size: clamp(25px, 4vw, 37px); margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+  .mast .sub { color: var(--muted); font-size: 15px; margin-top: 4px; }
+  .mast .meta { font-family: var(--mono); font-size: 12px; color: var(--faint); text-align: right; line-height: 1.7; }
+  .mast .meta b { color: var(--muted); font-weight: 600; }
+
+  /* ---- role banner ---- */
+  .role {
+    margin: 18px 0 4px; border: 1px solid var(--border); border-left: 4px solid var(--integ);
+    background: var(--integ-bg); border-radius: 10px; padding: 13px 16px;
+    font-size: 13.5px; color: var(--ink);
+  }
+  .role b { color: var(--integ); }
+  .role code { font-family: var(--mono); font-size: 0.9em; }
+
+  /* ---- legend ---- */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 6px 18px;
+    margin: 22px 0 8px; font-family: var(--mono); font-size: 12px; color: var(--muted);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  /* ---- stack ---- */
+  .stack { display: flex; flex-direction: column; gap: 0; margin-top: 14px; }
+  .layer {
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--lc, var(--border-strong));
+    border-radius: 10px; padding: 18px 20px 20px;
+  }
+  .layer-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+  }
+  .layer-head h2 { font-size: 16px; margin: 0; letter-spacing: -0.01em; }
+  .tag {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    letter-spacing: 0.03em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 5px; white-space: nowrap;
+  }
+  .layer-note { color: var(--muted); font-size: 13.5px; margin: 0; }
+  .layer-note code, .desc code, code.m { font-family: var(--mono); font-size: 0.92em; color: var(--ink); }
+
+  /* connector arrows between layers */
+  .conn {
+    align-self: center; font-family: var(--mono); font-size: 12px;
+    color: var(--faint); padding: 9px 0; text-align: center; line-height: 1.4;
+  }
+  .conn b { color: var(--be); font-weight: 600; }
+  .conn .arrow { display: block; font-size: 15px; color: var(--border-strong); }
+
+  /* chip grids */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); gap: 8px; }
+  .chip { border: 1px solid var(--border); background: var(--ground); border-radius: 8px; padding: 9px 11px; }
+  .chip .name { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--ink); }
+  .chip .desc { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .chip.accent { background: var(--accent-bg); border-color: transparent; }
+  .chip.accent .name { color: var(--accent); }
+
+  .col-split { display: grid; grid-template-columns: 1.55fr 1fr; gap: 18px; }
+  @media (max-width: 720px) { .col-split { grid-template-columns: 1fr; } }
+
+  .subhead {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--faint); margin: 0 0 8px;
+  }
+  .subhead code { font-family: var(--mono); text-transform: none; color: var(--muted); }
+
+  /* two-up for data + integrations */
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .duo { grid-template-columns: 1fr; } }
+
+  /* deep-link button (drill into the connector detail page) */
+  .deep-link {
+    display: inline-flex; align-items: center; gap: 9px;
+    margin-top: 15px; text-decoration: none;
+    font-size: 13px; font-weight: 600; color: #fff;
+    background: var(--integ); padding: 9px 14px; border-radius: 9px;
+    transition: opacity .15s;
+  }
+  .deep-link:hover { opacity: .88; }
+  .deep-link .dl-sub { font-family: var(--mono); font-size: 11px; font-weight: 500; opacity: .82; }
+  .deep-link .ar { font-size: 15px; line-height: 1; }
+  .inline-link { color: var(--integ); font-weight: 600; text-decoration: none; border-bottom: 1.5px solid var(--integ-bg); }
+  .inline-link:hover { border-bottom-color: var(--integ); }
+
+  /* devops footer */
+  .ops { margin-top: 26px; border: 1px dashed var(--border-strong); border-radius: 10px; padding: 16px 20px; background: var(--ops-bg); }
+  .ops .chip { background: var(--surface); }
+
+  /* ---- core features / flows ---- */
+  .features { margin-top: 38px; }
+  .features > .ftitle { font-size: 18px; letter-spacing: -0.01em; margin: 0 0 4px; }
+  .features > .fsub { color: var(--muted); font-size: 13.5px; margin: 0 0 16px; }
+
+  .feat {
+    background: var(--surface); border: 1px solid var(--border);
+    border-top: 3px solid var(--fc, var(--border-strong));
+    border-radius: 10px; padding: 18px 20px 20px;
+  }
+  .feat + .feat { margin-top: 14px; }
+  .feat-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .feat-h h3 { font-size: 15.5px; margin: 0; letter-spacing: -0.01em; }
+  .feat-desc { color: var(--muted); font-size: 13px; margin: 5px 0 0; }
+  .feat-desc code { font-family: var(--mono); font-size: 0.9em; color: var(--ink); }
+  .feat-desc b { color: var(--ink); }
+
+  /* flowchart — wraps to new rows, never scrolls horizontally */
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 2px; margin: 16px 0 4px; }
+  .node {
+    flex: 0 0 auto; width: 158px; background: var(--surface);
+    border: 1.5px solid var(--border-strong); border-radius: 8px; padding: 9px 11px;
+  }
+  .node .nt { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1.25; color: var(--ink); }
+  .node .nd { font-size: 10.5px; color: var(--muted); margin-top: 3px; line-height: 1.35; }
+  .node .nd code { font-family: var(--mono); font-size: 10px; color: var(--ink); }
+  .node.start { border-color: var(--fc); }
+  .node.start .nt { color: var(--fc); }
+  .node.decision { border-style: dashed; border-color: var(--fc); }
+  .node.ok { border-color: #16a34a; background: #f0fbf4; }
+  .node.ok .nt { color: #15803d; }
+  .node.bad { border-color: #dc2626; background: #fdf1f1; }
+  .node.bad .nt { color: #b91c1c; }
+
+  .arr { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 34px; }
+  .arr .al { font-size: 8px; text-transform: uppercase; letter-spacing: 0.03em; text-align: center; line-height: 1.1; color: var(--faint); margin-bottom: 1px; max-width: 58px; }
+  .arr .ah { font-size: 16px; line-height: 1; color: var(--border-strong); }
+
+  /* a decision splits into stacked outcome rows */
+  .branch { flex: 0 0 auto; display: flex; flex-direction: column; gap: 9px; }
+  .brow { display: flex; flex-wrap: wrap; align-items: center; gap: 9px 2px; }
+
+  /* narrow screens: stack the flow into a vertical column with DOWN arrows */
+  @media (max-width: 900px) {
+    .flow { flex-direction: column; align-items: center; gap: 0; }
+    .flow .node { width: auto; max-width: 100%; }
+    .flow .arr { flex-direction: row; justify-content: center; width: 100%; min-width: 0; padding: 7px 0; gap: 7px; }
+    .flow .arr .al { margin-bottom: 0; max-width: none; }
+    .flow .arr .ah { transform: rotate(90deg); }
+    .branch { width: auto; align-items: center; }
+    .brow { flex-direction: column; align-items: center; gap: 0; }
+  }
+  .detail-row { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .detail-row .lbl { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--faint); margin-right: 4px; }
+  .pill { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 12px; background: var(--ground); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+  .pill.hot { background: var(--fc-bg); border-color: transparent; color: var(--fc); }
+
+  /* mock UI block */
+  .mock-wrap { margin-top: 18px; border-top: 1px dashed var(--border); padding-top: 14px; }
+  .mock-cap { font-size: 12.5px; color: var(--muted); margin-bottom: 12px; }
+  .mock-cap b { color: var(--ink); }
+  .mock-cap code { font-family: var(--mono); font-size: 0.9em; }
+  .mock { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1.2fr); gap: 12px; align-items: stretch; }
+  @media (max-width: 720px) { .mock { grid-template-columns: 1fr; } }
+
+  .panel { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+  .panel-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11.5px; font-weight: 700; padding: 8px 11px; background: var(--ground); border-bottom: 1px solid var(--border); }
+  .panel-h .cnt { font-family: var(--mono); font-size: 10.5px; font-weight: 700; color: var(--fc); }
+  .perm { padding: 3px 11px 7px; }
+  .prow { display: flex; align-items: center; gap: 9px; font-size: 12px; color: var(--ink); padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .perm .prow:last-child { border-bottom: none; }
+  .prow.off { color: var(--faint); }
+  .prow.add { margin: 0 -11px; padding-left: 11px; padding-right: 11px; background: var(--fc-bg); }
+  .cb { flex: 0 0 auto; width: 15px; height: 15px; border-radius: 4px; background: var(--fc); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; }
+  .cb.e { background: transparent; border: 1.5px solid var(--border-strong); }
+  .newtag { margin-left: auto; font-family: var(--mono); font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fc); background: var(--surface); border: 1px solid var(--fc); border-radius: 10px; padding: 1px 6px; white-space: nowrap; }
+  .mock-arr { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 42px; }
+  .mock-arr .al { font-size: 8px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--faint); text-align: center; line-height: 1.1; margin-bottom: 2px; }
+  .mock-arr .ah { font-size: 18px; color: var(--fc); }
+  @media (max-width: 720px) { .mock-arr .ah { transform: rotate(90deg); } }
+
+  .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 11px; }
+  .tile { border: 1px solid var(--border); border-radius: 8px; background: var(--ground); padding: 10px 11px; font-size: 11.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 44px; }
+  .tile.new { border-color: var(--fc); background: var(--fc-bg); color: var(--fc); }
+
+  /* dashboard KPIs + mini chart */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  @media (max-width: 560px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { border: 1px solid var(--border); border-radius: 8px; background: var(--ground); padding: 10px 11px; }
+  .kpi .k-v { font-size: 19px; font-weight: 700; color: var(--fc); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; line-height: 1.1; }
+  .kpi .k-l { font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 3px; }
+
+  footer.note { margin-top: 30px; font-size: 12.5px; color: var(--faint); border-top: 1px solid var(--border); padding-top: 14px; }
+  footer.note code { font-family: var(--mono); color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="mast">
+    <div>
+      <h1>Wordbee — Localization Platform Architecture</h1>
+      <div class="sub">Multi-tenant Translation Management System (TMS) · web SaaS · workflow automation · TM + MT</div>
+    </div>
+    <div class="meta">
+      <div><b>backend</b> .NET · ASP.NET Core · C#</div>
+      <div><b>frontend</b> React · TypeScript</div>
+      <div><b>data</b> SQL Server · Redis · Elasticsearch</div>
+    </div>
+  </header>
+
+  <div class="role">
+    <b>My role (Fullstack, Freelance).</b> I built and maintained business-workflow features across the
+    <code>.NET</code> backend and <code>React</code> frontend, designed RESTful APIs, and shipped custom
+    <b>connectors</b> — <b>Google Sheets</b>, <b>Unity</b> and <b>Unreal Engine</b> — that auto-sync localization data
+    into the content-production pipeline, using <b>Claude AI</b> to accelerate development. This diagram maps the
+    platform at the architecture level the work touched.
+  </div>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--client)"></i> Clients</span>
+    <span><i class="dot" style="background:var(--fe)"></i> Frontend (React)</span>
+    <span><i class="dot" style="background:var(--be)"></i> Backend (.NET)</span>
+    <span><i class="dot" style="background:var(--async)"></i> Async / workflow</span>
+    <span><i class="dot" style="background:var(--data)"></i> Data &amp; search</span>
+    <span><i class="dot" style="background:var(--integ)"></i> My integrations</span>
+    <span><i class="dot" style="background:var(--ops)"></i> DevOps</span>
+  </div>
+
+  <div class="stack">
+
+    <!-- CLIENTS -->
+    <section class="layer" style="--lc:var(--client)">
+      <div class="layer-head">
+        <h2>Clients &amp; consumers</h2>
+        <span class="tag" style="background:var(--client-bg);color:var(--client)">web · API · connectors</span>
+      </div>
+      <p class="layer-note" style="margin-bottom:14px">Project managers, translators, reviewers and clients use one shared platform; each company is an isolated tenant. Machines reach it over the REST API and connectors that push/pull content on a schedule.</p>
+      <div class="chips">
+        <div class="chip"><div class="name">Project managers</div><div class="desc">create projects · assign work</div></div>
+        <div class="chip"><div class="name">Translators / reviewers</div><div class="desc">work in the editor · TM + MT</div></div>
+        <div class="chip"><div class="name">Client portal</div><div class="desc">order · track · approve</div></div>
+        <div class="chip"><div class="name">REST API (v1 / v2)</div><div class="desc">API key → JWT bearer</div></div>
+        <div class="chip"><div class="name">Connectors</div><div class="desc">Sheets · Unity · Unreal sync</div></div>
+      </div>
+    </section>
+
+    <div class="conn"><span class="arrow">▼ ▲</span> HTTPS · <b>REST</b> <code class="m">/api</code> · session cookies + CSRF &nbsp;·&nbsp; API key &rarr; <b>JWT</b> bearer for integrations</div>
+
+    <!-- FRONTEND -->
+    <section class="layer" style="--lc:var(--fe)">
+      <div class="layer-head">
+        <h2>Frontend — React editor &amp; admin</h2>
+        <span class="tag" style="background:var(--fe-bg);color:var(--fe)">React · TypeScript</span>
+      </div>
+      <p class="layer-note" style="margin-bottom:14px">The translation editor and management screens. Source &amp; target segments side by side, live TM / MT suggestions, and project / job / cost views.</p>
+      <div class="grid" style="--accent:var(--fe);--accent-bg:var(--fe-bg)">
+        <div class="chip accent"><div class="name">Editor (Multicolumn)</div><div class="desc">source/target columns · current</div></div>
+        <div class="chip accent"><div class="name">Editor (Strings)</div><div class="desc">next-gen editor</div></div>
+        <div class="chip accent"><div class="name">Project workspace</div><div class="desc">documents · languages · jobs</div></div>
+        <div class="chip accent"><div class="name">Workflow board</div><div class="desc">task status · allocation</div></div>
+        <div class="chip accent"><div class="name">Cost &amp; invoice views</div><div class="desc">word-count breakdown</div></div>
+        <div class="chip accent"><div class="name">Admin &amp; subscription</div><div class="desc">users · seats · features</div></div>
+      </div>
+    </section>
+
+    <div class="conn"><span class="arrow">▼</span> RESTful API · validated request models · per-tenant authorization</div>
+
+    <!-- BACKEND -->
+    <section class="layer" style="--lc:var(--be)">
+      <div class="layer-head">
+        <h2>Backend — .NET / ASP.NET Core</h2>
+        <span class="tag" style="background:var(--be-bg);color:var(--be)">C# · RESTful API · domain services</span>
+      </div>
+      <p class="layer-note" style="margin-bottom:14px">The core TMS domain: turning source files into priced, tracked, multi-step translation work. Layered services with role / data-scope authorization on every request.</p>
+
+      <p class="subhead">Domain modules</p>
+      <div class="grid" style="--accent:var(--be);--accent-bg:var(--be-bg)">
+        <div class="chip accent"><div class="name">Projects</div><div class="desc">Standard &amp; Codyt (stream)</div></div>
+        <div class="chip accent"><div class="name">Jobs / Tasks</div><div class="desc">assign · status · deadlines</div></div>
+        <div class="chip accent"><div class="name">Workflow</div><div class="desc">translate &rarr; revise &rarr; approve</div></div>
+        <div class="chip accent"><div class="name">Word count</div><div class="desc">analysis · match tiers</div></div>
+        <div class="chip accent"><div class="name">Translation Memory</div><div class="desc">100% · fuzzy · repetition</div></div>
+        <div class="chip accent"><div class="name">Machine Translation</div><div class="desc">MT engines · pre-translate</div></div>
+        <div class="chip accent"><div class="name">Costing</div><div class="desc">word-count × price list</div></div>
+        <div class="chip accent"><div class="name">Invoicing</div><div class="desc">auto-generate · link jobs</div></div>
+        <div class="chip accent"><div class="name">Auth / authz</div><div class="desc">profiles · rights · licenses</div></div>
+        <div class="chip accent"><div class="name">Subscriptions</div><div class="desc">editions · features · seats</div></div>
+      </div>
+
+      <div class="col-split" style="margin-top:16px">
+        <div>
+          <p class="subhead">Cross-cutting</p>
+          <div class="chips">
+            <div class="chip"><div class="name">Multi-tenancy</div><div class="desc">resolve tenant per request</div></div>
+            <div class="chip"><div class="name">Validation</div><div class="desc">mandatory param checks</div></div>
+            <div class="chip"><div class="name">API throttling</div><div class="desc">per user / IP / SLA tier</div></div>
+            <div class="chip"><div class="name">Audit / change-track</div><div class="desc">sensitive fields masked</div></div>
+          </div>
+        </div>
+        <div>
+          <p class="subhead">Auth providers</p>
+          <div class="chips">
+            <div class="chip"><div class="name">Native login</div><div class="desc">PBKDF2 + salt</div></div>
+            <div class="chip"><div class="name">SAML 2.0 / SSO</div><div class="desc">federated identity</div></div>
+            <div class="chip"><div class="name">MFA / 2FA</div><div class="desc">JWT handoff</div></div>
+            <div class="chip"><div class="name">API key &rarr; JWT</div><div class="desc">per-user key</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="conn"><span class="arrow">▼</span> heavy work offloaded to a job queue &amp; message bus &nbsp;·&nbsp; reads served from cache &amp; search</div>
+
+    <!-- ASYNC + DATA -->
+    <div class="duo">
+      <section class="layer" style="--lc:var(--async)">
+        <div class="layer-head">
+          <h2>Async &amp; workflow</h2>
+          <span class="tag" style="background:var(--async-bg);color:var(--async)">queue · bus · engine</span>
+        </div>
+        <div class="chips" style="--accent:var(--async);--accent-bg:var(--async-bg)">
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Job queue (worker)</div><div class="desc">word count · pre-translation · file conversion · import/export · QA — off the web thread, with retries</div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Message bus (RabbitMQ)</div><div class="desc">MassTransit · publish/consume · dead-letter · outbox idempotency</div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Workflow engine (Camunda / Zeebe)</div><div class="desc">BPMN orchestration · job workers for multi-step flows</div></div>
+        </div>
+      </section>
+
+      <section class="layer" style="--lc:var(--data)">
+        <div class="layer-head">
+          <h2>Data &amp; search</h2>
+          <span class="tag" style="background:var(--data-bg);color:var(--data)">stateful</span>
+        </div>
+        <div class="chips" style="--accent:var(--data);--accent-bg:var(--data-bg)">
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">SQL Server — per tenant</div><div class="desc">one database per company · every row tagged with the tenant id for isolation</div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Elasticsearch</div><div class="desc">translation segments — search / filter / bulk edit kept off SQL</div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Redis</div><div class="desc">cache (rights · tokens · pricing) · throttling counters · sessions</div></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="conn"><span class="arrow">▼ ▲</span> the part I owned — outbound &amp; inbound sync with game engines &amp; spreadsheets</div>
+
+    <!-- MY INTEGRATIONS -->
+    <section class="layer" style="--lc:var(--integ)">
+      <div class="layer-head">
+        <h2>My integrations — content-pipeline connectors</h2>
+        <span class="tag" style="background:var(--integ-bg);color:var(--integ)">built by me</span>
+      </div>
+      <p class="layer-note" style="margin-bottom:14px">Custom connectors that keep source strings in sync between Wordbee and the teams producing content — so new/changed text flows in for translation and approved translations flow back out, without manual copy-paste.</p>
+      <div class="grid" style="--accent:var(--integ);--accent-bg:var(--integ-bg)">
+        <div class="chip accent"><div class="name">Google Sheets API</div><div class="desc">pull strings · push translations</div></div>
+        <div class="chip accent"><div class="name">Unity</div><div class="desc">localization tables sync</div></div>
+        <div class="chip accent"><div class="name">Unreal Engine</div><div class="desc">string tables sync</div></div>
+        <div class="chip accent"><div class="name">Claude AI (Anthropic)</div><div class="desc">dev acceleration · code review</div></div>
+      </div>
+      <a class="deep-link" href="connector-overview.html">
+        🐝 Open the connector deep-dive
+        <span class="dl-sub">Sheets · Unity · Unreal — push / pull, auto-sync &amp; comparison</span>
+        <span class="ar">→</span>
+      </a>
+    </section>
+
+    <!-- DEVOPS -->
+    <section class="ops">
+      <div class="layer-head" style="margin-bottom:12px">
+        <h2 style="font-size:15px">DevOps &amp; delivery</h2>
+        <span class="tag" style="background:#dde2ea;color:var(--ops)">Azure · Docker · K8s</span>
+      </div>
+      <div class="grid">
+        <div class="chip"><div class="name">Docker</div><div class="desc">multi-stage .NET build</div></div>
+        <div class="chip"><div class="name">Kubernetes</div><div class="desc">service manifests</div></div>
+        <div class="chip"><div class="name">Azure</div><div class="desc">SQL · file storage · registry</div></div>
+        <div class="chip"><div class="name">Health checks</div><div class="desc">live / ready / startup</div></div>
+        <div class="chip"><div class="name">OpenTelemetry</div><div class="desc">tracing · correlation ids</div></div>
+        <div class="chip"><div class="name">Git workflow</div><div class="desc">feature branch · PR review</div></div>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="features">
+    <h2 class="ftitle">Signature flows</h2>
+    <p class="fsub">Five flows that make this more than CRUD — and how each travels through the layers above.</p>
+
+    <!-- FEATURE 1: SCALE + INTEGRATIONS -->
+    <article class="feat" style="--fc:#047857; --fc-bg:#e6f4ef">
+      <div class="feat-h">
+        <h3>Connector sync &amp; load handling — thousands of users, isolated</h3>
+        <span class="tag" style="background:#e6f4ef;color:#047857">My integrations · Multi-tenancy</span>
+      </div>
+      <p class="feat-desc">My connectors push/pull strings on a schedule via the REST API (API key → JWT). Under load the platform stays calm by design: throttle at the edge, serve reads from cache &amp; Elasticsearch, and push heavy work to the job queue — so a spike just lengthens a queue instead of stalling the web tier. Each tenant's data lives in its own database, so one company's load never touches another's.</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">Connector request</div><div class="nd">Sheets / Unity / Unreal</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">Throttle?</div><div class="nd">per user / IP / SLA tier</div></div>
+        <div class="arr"><span class="al">resolve</span><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Tenant context</div><div class="nd">map request → tenant DB / index</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Cache / search read</div><div class="nd">Redis + Elasticsearch off SQL</div></div>
+        <div class="arr"><span class="al">heavy?</span><span class="ah">→</span></div>
+        <div class="node ok"><div class="nt">Queue heavy work</div><div class="nd">word count / import → worker · poll progress</div></div>
+      </div>
+
+      <div class="mock-wrap">
+        <div class="mock-cap">How a content spike is absorbed rather than dropped — the philosophy behind the layers above.</div>
+        <div class="kpi-row">
+          <div class="kpi"><div class="k-v">1 DB</div><div class="k-l">per tenant (isolated)</div></div>
+          <div class="kpi"><div class="k-v">Redis</div><div class="k-l">rights · tokens · pricing</div></div>
+          <div class="kpi"><div class="k-v">Async</div><div class="k-l">heavy work off web tier</div></div>
+          <div class="kpi"><div class="k-v">SLA</div><div class="k-l">throttle tiers per plan</div></div>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">connector sync</span>
+        <span class="pill hot">pull source strings</span>
+        <span class="pill hot">push approved translations</span>
+        <span class="pill">scheduled · idempotent</span>
+        <span class="pill">API key → JWT</span>
+      </div>
+
+      <p class="feat-desc" style="margin-top:14px">Each connector lives where the content does and does the same two-way job in that platform's native format — see the full breakdown in the <a class="inline-link" href="connector-overview.html">connector deep-dive →</a></p>
+    </article>
+
+    <!-- FEATURE 2: WORD COUNT + TM + MT → COSTING -->
+    <article class="feat" style="--fc:#0369a1; --fc-bg:#e3f0f8">
+      <div class="feat-h">
+        <h3>TM + MT pre-translation → transparent costing</h3>
+        <span class="tag" style="background:#e3f0f8;color:#0369a1">TM · MT · Costing · Invoicing</span>
+      </div>
+      <p class="feat-desc">Before anyone translates, the file is analysed: Translation Memory fills exact &amp; fuzzy matches, Machine Translation pre-fills the rest, and the breakdown by match tier prices the job against the client's price list — then an invoice is generated automatically.</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">Upload file</div><div class="nd">extract segments</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Word count</div><div class="nd">tier each segment via TM</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Pre-translate</div><div class="nd">TM matches + MT for the rest</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Cost</div><div class="nd">tiers × price list → job cost</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node ok"><div class="nt">Invoice</div><div class="nd">auto-generate · link to jobs</div></div>
+      </div>
+
+      <div class="mock-wrap">
+        <div class="mock-cap">Example — an <b>8,000-word</b> file: TM &amp; repetitions cut the billable new words, and the cost falls out of the tier breakdown.</div>
+        <div class="mock">
+          <div class="panel">
+            <div class="panel-h"><span>▤ Analysis · 8,000 words</span><span class="cnt">EN → VI</span></div>
+            <div class="perm">
+              <div class="prow"><span class="cb">✓</span> 100% match · 500 <span class="newtag">cheapest</span></div>
+              <div class="prow"><span class="cb">✓</span> Repetition · 1,200</div>
+              <div class="prow add"><span class="cb">✓</span> Fuzzy · 1,800 <span class="newtag">discounted</span></div>
+              <div class="prow off"><span class="cb e"></span> New words · 4,500 (full rate)</div>
+            </div>
+          </div>
+          <div class="mock-arr"><span class="al">price → bill</span><span class="ah">→</span></div>
+          <div class="panel">
+            <div class="panel-h"><span>✦ Cost &amp; invoice</span><span class="cnt">auto</span></div>
+            <div class="tiles">
+              <div class="tile new">Billable ≈ 5.4k <span class="newtag">−33%</span></div>
+              <div class="tile new">Cost computed <span class="newtag">PRICE LIST</span></div>
+              <div class="tile">Invoice drafted</div>
+              <div class="tile">Linked to jobs</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- FEATURE 3: STANDARD vs CODYT -->
+    <article class="feat" style="--fc:#b9741a; --fc-bg:#f8ecd9">
+      <div class="feat-h">
+        <h3>Two project models — manual Standard jobs vs automated Codyt stream</h3>
+        <span class="tag" style="background:#f8ecd9;color:#b9741a">Projects · Workflow</span>
+      </div>
+      <p class="feat-desc"><b>Standard</b> suits one-off batches: the PM creates each job by hand and advances it. <b>Codyt</b> suits living content (websites, apps): you define the workflow once and the system generates tasks per segment and per language whenever new content arrives — no repeat setup.</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">New / updated content</div><div class="nd">upload or connector push</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">Project type?</div><div class="nd">Standard vs Codyt</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="branch">
+          <div class="brow">
+            <div class="node"><div class="nt">Standard</div><div class="nd">PM creates jobs by hand · assigns people · advances steps</div></div>
+          </div>
+          <div class="brow">
+            <div class="node ok"><div class="nt">Codyt</div><div class="nd">auto-create tasks per segment + language</div></div>
+            <div class="arr"><span class="ah">→</span></div>
+            <div class="node"><div class="nt">Auto-route</div><div class="nd">translate &rarr; revise &rarr; approve by workflow</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">unit of work</span>
+        <span class="pill hot">Standard · whole job / files</span>
+        <span class="pill hot">Codyt · segment + language task</span>
+      </div>
+      <div class="detail-row">
+        <span class="lbl">PM effort</span>
+        <span class="pill">Standard · high every time, flexible</span>
+        <span class="pill">Codyt · high once, then ≈ 0</span>
+      </div>
+    </article>
+
+    <!-- FEATURE 4: CODYT AUTO-ALLOCATION -->
+    <article class="feat" style="--fc:#7c3aed; --fc-bg:#f1ebfd">
+      <div class="feat-h">
+        <h3>Codyt auto-allocation — who gets the task, automatically</h3>
+        <span class="tag" style="background:#f1ebfd;color:#7c3aed">Workflow · Supplier groups</span>
+      </div>
+      <p class="feat-desc">Each workflow step declares an <b>allocation mode</b> plus eligible <b>supplier groups</b> (filtered by language pair + service + price list). Tasks are either assigned to a fixed person or opened to a group to claim — with delayed publication for tiered backup so work never stalls.</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">Task created</div><div class="nd">step + language pair</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Resolve suppliers</div><div class="nd">eligible group by language + service</div></div>
+        <div class="arr"><span class="al">mode</span><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">Alloc mode?</div><div class="nd">fixed · self-service · multi-user</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="branch">
+          <div class="brow">
+            <div class="node ok"><div class="nt">Fixed</div><div class="nd">assign straight to the configured person</div></div>
+          </div>
+          <div class="brow">
+            <div class="node"><div class="nt">Open job</div><div class="nd">notify group · first to accept locks it</div></div>
+            <div class="arr"><span class="al">backup</span><span class="ah">→</span></div>
+            <div class="node"><div class="nt">Delayed tier</div><div class="nd">after N h → open to backup group</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">modes</span>
+        <span class="pill hot">SingleUser · fixed</span>
+        <span class="pill hot">SelfService · claim</span>
+        <span class="pill hot">MultiUser · parallel</span>
+      </div>
+      <div class="detail-row">
+        <span class="lbl">guardrails</span>
+        <span class="pill">delayed publication (vendor backup)</span>
+        <span class="pill">no self-translate-then-review</span>
+      </div>
+    </article>
+
+    <!-- FEATURE 5: VERSIONED RE-IMPORT + LEVERAGE -->
+    <article class="feat" style="--fc:#0d9488; --fc-bg:#e0f3f0">
+      <div class="feat-h">
+        <h3>Versioned re-import — only changed segments become work</h3>
+        <span class="tag" style="background:#e0f3f0;color:#0d9488">Word count · Segments</span>
+      </div>
+      <p class="feat-desc">When living content updates, the connector re-imports a <b>new version</b> of the same document. Word count compares it against the previous version: unchanged sentences inherit the old translation automatically; only new or edited sentences are flagged and turned into tasks. Clients pay for changed text only.</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">Re-import version</div><div class="nd">same doc · new content</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Word count + leverage</div><div class="nd">compare new ↔ previous version</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">Sentence changed?</div><div class="nd">match vs previous</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="branch">
+          <div class="brow">
+            <div class="node ok"><div class="nt">Unchanged</div><div class="nd">copy old translation · no task</div></div>
+          </div>
+          <div class="brow">
+            <div class="node bad"><div class="nt">New / edited</div><div class="nd">flag segment</div></div>
+            <div class="arr"><span class="ah">→</span></div>
+            <div class="node"><div class="nt">Create tasks</div><div class="nd">one per workflow step → assign</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">match tiers</span>
+        <span class="pill hot">100% match</span>
+        <span class="pill hot">fuzzy</span>
+        <span class="pill hot">repetition</span>
+        <span class="pill">new word</span>
+      </div>
+    </article>
+
+  </section>
+
+  <footer class="note">
+    Multi-tenant <code>.NET / ASP.NET Core</code> backend with a <code>React</code> editor, backed by per-tenant
+    <code>SQL Server</code>, <code>Elasticsearch</code> for segments and <code>Redis</code> for cache / throttling.
+    Heavy work runs on a job queue and <code>RabbitMQ</code> message bus; multi-step flows orchestrate through
+    <code>Camunda / Zeebe</code>. My contribution: workflow features across backend + frontend and the
+    <code>Google Sheets</code> / <code>Unity</code> / <code>Unreal</code> connectors that sync the content pipeline,
+    built with <code>Claude AI</code> in the loop. Diagram is product/architecture level — no client internals.
+  </footer>
+
+</div>
+</body>
+</html>

@@ -43,6 +43,15 @@ const projectTags = {
   forder: ["React", "Node.js", "Express", "MongoDB", "Socket.IO", "JWT"],
 };
 
+// Sơ đồ kiến trúc (file HTML tĩnh trong public/doc/). Dùng chung mọi ngôn ngữ.
+const projectDocs = {
+  wordbee: "/doc/wordbee-platform.html",
+  solana: "/doc/solana-trade.html",
+  attendance: "/doc/architecture.html",
+  flight: "/doc/flight-booking.html",
+  forder: "/doc/f-oder.html",
+};
+
 const stacks = {
   solana: "NestJS, TypeScript, Solana Web3.js, Raydium SDK v2, BullMQ, MongoDB",
   wordbee: ".NET, ASP.NET Core, ReactJS, TypeScript, SQL Server, Unity, Unreal Engine, Google Sheets API, Claude AI",
@@ -98,31 +107,31 @@ const vi = {
       title: "Wordbee Localization Platform",
       description:
         "Tính năng cho nền tảng quản lý dịch thuật & tự động hoá quy trình: backend .NET, frontend ReactJS, RESTful API. Tích hợp Unity, Unreal Engine và Google Sheets API để đồng bộ dữ liệu tự động cho pipeline sản xuất nội dung, tận dụng Claude AI để tăng tốc phát triển.",
-      tags: projectTags.wordbee, link: "https://www.wordbee.com", repo: "", featured: true,
+      tags: projectTags.wordbee, link: "https://www.wordbee.com", doc: projectDocs.wordbee, repo: "", featured: true,
     },
     {
       title: "Solana Token Swap Service",
       description:
         "Dịch vụ token swap hiệu năng cao trên Solana dùng Raydium SDK v2, hỗ trợ đồng thời AMM, CPMM và CLMM qua một kiến trúc swap thống nhất. Xử lý trọn vòng đời giao dịch: wrap SOL/WSOL, ATA, ký và theo dõi xác nhận on-chain, kèm trading đa ví song song bằng BullMQ.",
-      tags: projectTags.solana, link: "https://raydium.io/swap/?inputMint=sol&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", repo: "", featured: true,
+      tags: projectTags.solana, link: "https://raydium.io/swap/?inputMint=sol&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", doc: projectDocs.solana, repo: "", featured: true,
     },
     {
       title: "Attendance Management System",
       description:
         "Hệ thống chấm công với xác thực, phân quyền theo vai trò (RBAC), quản lý đơn nghỉ phép và dashboard quản trị. Xây trên NestJS + MySQL + TypeORM, bảo mật bằng JWT và tối ưu bằng Redis, tuân thủ chuẩn RESTful API.",
-      tags: projectTags.attendance, link: "https://hr-aiot-managerment.vercel.app/", repo: "", featured: false,
+      tags: projectTags.attendance, link: "https://hr-aiot-managerment.vercel.app/", doc: projectDocs.attendance, repo: "", featured: false,
     },
     {
       title: "Flight Ticket Booking Website",
       description:
         "Website đặt vé máy bay với frontend React.js và backend Node.js (Express). Tích hợp API của Bamboo Airways để lấy lịch bay, giá vé và xử lý đặt chỗ; xây RESTful API kèm kiểm tra dữ liệu và bộ test case cho các luồng chính.",
-      tags: projectTags.flight, link: "https://flight.sbaygroup.com/", repo: "", featured: false,
+      tags: projectTags.flight, link: "https://flight.sbaygroup.com/", doc: projectDocs.flight, repo: "", featured: false,
     },
     {
       title: "F-ORDER — Restaurant Order Management",
       description:
         "Đồ án Capstone 2 — nền tảng quản lý gọi món nhà hàng full-stack dựng bằng Node.js, Express, MongoDB, React và Socket.IO. Theo dõi đơn hàng thời gian thực, phân quyền theo vai trò, quản lý sản phẩm/khách hàng và dashboard phân tích; REST API, xác thực JWT và thông báo qua WebSocket, tối ưu hiệu năng cơ sở dữ liệu.",
-      tags: projectTags.forder, link: "https://order-management-amber-seven.vercel.app/", repo: "", featured: false,
+      tags: projectTags.forder, link: "https://order-management-amber-seven.vercel.app/", doc: projectDocs.forder, repo: "", featured: false,
     },
     {
       title: "Career Support System",
@@ -199,6 +208,7 @@ const vi = {
       socials: { github: "GitHub", linkedin: "LinkedIn", email: "Email" },
     },
     footer: { built: "Xây bằng React + GSAP", top: "↑ Lên đầu trang" },
+    project: { live: "Xem dự án", doc: "Sơ đồ kiến trúc", code: "Mã nguồn" },
   },
 };
 
@@ -239,31 +249,31 @@ const en = {
       title: "Wordbee Localization Platform",
       description:
         "Features for a translation management & workflow automation platform: .NET backend, ReactJS frontend, RESTful APIs. Integrated Unity, Unreal Engine and the Google Sheets API to automatically sync data for the content production pipeline, leveraging Claude AI to accelerate development.",
-      tags: projectTags.wordbee, link: "https://www.wordbee.com", repo: "", featured: true,
+      tags: projectTags.wordbee, link: "https://www.wordbee.com", doc: projectDocs.wordbee, repo: "", featured: true,
     },
     {
       title: "Solana Token Swap Service",
       description:
         "A high-performance token swap service on Solana built with Raydium SDK v2, supporting AMM, CPMM and CLMM through a unified swap architecture. Handles the full transaction lifecycle — SOL/WSOL wrapping, ATA, signing and on-chain confirmation tracking — with concurrent multi-wallet trading via BullMQ.",
-      tags: projectTags.solana, link: "https://raydium.io/swap/?inputMint=sol&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", repo: "", featured: true,
+      tags: projectTags.solana, link: "https://raydium.io/swap/?inputMint=sol&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", doc: projectDocs.solana, repo: "", featured: true,
     },
     {
       title: "Attendance Management System",
       description:
         "An attendance system with authentication, role-based access control (RBAC), leave-request management and an admin dashboard. Built on NestJS + MySQL + TypeORM, secured with JWT and optimized with Redis, following RESTful API standards.",
-      tags: projectTags.attendance, link: "https://hr-aiot-managerment.vercel.app/", repo: "", featured: false,
+      tags: projectTags.attendance, link: "https://hr-aiot-managerment.vercel.app/", doc: projectDocs.attendance, repo: "", featured: false,
     },
     {
       title: "Flight Ticket Booking Website",
       description:
         "A flight booking website with a React.js frontend and Node.js (Express) backend. Integrated the Bamboo Airways API to fetch flight schedules and fares and handle bookings; built RESTful APIs with data validation and test cases for the main flows.",
-      tags: projectTags.flight, link: "https://flight.sbaygroup.com/", repo: "", featured: false,
+      tags: projectTags.flight, link: "https://flight.sbaygroup.com/", doc: projectDocs.flight, repo: "", featured: false,
     },
     {
       title: "F-ORDER — Restaurant Order Management",
       description:
         "Capstone 2 — a full-stack restaurant order management platform built with Node.js, Express, MongoDB, React and Socket.IO. Real-time order tracking, role-based access, product/customer management and analytics dashboards, plus REST APIs, JWT auth and WebSocket-based notifications with optimized database performance.",
-      tags: projectTags.forder, link: "https://order-management-amber-seven.vercel.app/", repo: "", featured: false,
+      tags: projectTags.forder, link: "https://order-management-amber-seven.vercel.app/", doc: projectDocs.forder, repo: "", featured: false,
     },
     {
       title: "Career Support System",
@@ -340,6 +350,7 @@ const en = {
       socials: { github: "GitHub", linkedin: "LinkedIn", email: "Email" },
     },
     footer: { built: "Built with React + GSAP", top: "↑ Back to top" },
+    project: { live: "View project", doc: "Architecture", code: "Source code" },
   },
 };
 
@@ -380,25 +391,25 @@ const zh = {
       title: "Wordbee Localization Platform",
       description:
         "为翻译管理与流程自动化平台开发功能：.NET 后端、ReactJS 前端、RESTful API。集成 Unity、Unreal Engine 和 Google Sheets API，为内容生产流水线自动同步数据，并借助 Claude AI 加速开发。",
-      tags: projectTags.wordbee, link: "https://www.wordbee.com", repo: "", featured: true,
+      tags: projectTags.wordbee, link: "https://www.wordbee.com", doc: projectDocs.wordbee, repo: "", featured: true,
     },
     {
       title: "Solana Token Swap Service",
       description:
         "基于 Raydium SDK v2 在 Solana 上构建的高性能代币兑换服务，通过统一的兑换架构同时支持 AMM、CPMM 和 CLMM。处理完整的交易生命周期——SOL/WSOL 封装、ATA、签名与链上确认追踪——并通过 BullMQ 实现多钱包并发交易。",
-      tags: projectTags.solana, link: "https://raydium.io/swap/?inputMint=sol&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", repo: "", featured: true,
+      tags: projectTags.solana, link: "https://raydium.io/swap/?inputMint=sol&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", doc: projectDocs.solana, repo: "", featured: true,
     },
     {
       title: "Attendance Management System",
       description:
         "考勤管理系统，具备身份验证、基于角色的访问控制（RBAC）、请假管理和管理后台。基于 NestJS + MySQL + TypeORM 构建，使用 JWT 保障安全、Redis 优化性能，遵循 RESTful API 规范。",
-      tags: projectTags.attendance, link: "https://hr-aiot-managerment.vercel.app/", repo: "", featured: false,
+      tags: projectTags.attendance, link: "https://hr-aiot-managerment.vercel.app/", doc: projectDocs.attendance, repo: "", featured: false,
     },
     {
       title: "Flight Ticket Booking Website",
       description:
         "机票预订网站，前端使用 React.js，后端使用 Node.js（Express）。集成 Bamboo Airways API 获取航班时刻、票价并处理预订；构建带数据校验的 RESTful API，并为主要流程编写测试用例。",
-      tags: projectTags.flight, link: "https://flight.sbaygroup.com/", repo: "", featured: false,
+      tags: projectTags.flight, link: "https://flight.sbaygroup.com/", doc: projectDocs.flight, repo: "", featured: false,
     },
     {
       title: "Career Support System",
@@ -410,7 +421,7 @@ const zh = {
       title: "F-ORDER — Restaurant Order Management",
       description:
         "毕业设计 2 —— 使用 Node.js、Express、MongoDB、React 和 Socket.IO 构建的全栈餐厅点餐管理平台。具备实时订单追踪、基于角色的访问控制、商品/客户管理和分析仪表盘，并提供 REST API、JWT 认证和基于 WebSocket 的通知，同时优化数据库性能。",
-      tags: projectTags.forder, link: "https://order-management-amber-seven.vercel.app/", repo: "", featured: false,
+      tags: projectTags.forder, link: "https://order-management-amber-seven.vercel.app/", doc: projectDocs.forder, repo: "", featured: false,
     },
   ],
   experience: [
@@ -481,6 +492,7 @@ const zh = {
       socials: { github: "GitHub", linkedin: "LinkedIn", email: "邮箱" },
     },
     footer: { built: "使用 React + GSAP 构建", top: "↑ 返回顶部" },
+    project: { live: "查看项目", doc: "架构图", code: "源代码" },
   },
 };
 

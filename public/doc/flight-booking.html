@@ -1,0 +1,512 @@
+<title>Flight Booking — Bamboo Airways Integration</title>
+<meta name="description" content="Architecture of a flight ticket booking website integrated with the Bamboo Airways API: a step-by-step frontend booking flow and a backend adapter that customizes the airline API for the company's buy/sell features.">
+
+<style>
+  :root {
+    --ground: #f6f7f9;
+    --surface: #ffffff;
+    --ink: #16202e;
+    --muted: #5d6b7e;
+    --faint: #8c98a8;
+    --border: #e3e7ec;
+    --border-strong: #cdd4dd;
+
+    --fe: #2563eb;      /* blue   - frontend */
+    --fe-bg: #e8effd;
+    --be: #0d9488;      /* teal   - backend  */
+    --be-bg: #e3f4f1;
+    --data: #b45309;    /* amber  - data     */
+    --data-bg: #f9efe2;
+    --ext: #16a34a;     /* green  - external (Bamboo) */
+    --ext-bg: #e6f6ec;
+    --ops: #475569;     /* slate  - devops   */
+    --ops-bg: #eef1f5;
+
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 1080px; margin: 0 auto; padding: 56px 28px 80px; }
+
+  /* ---- masthead ---- */
+  header.mast {
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    justify-content: space-between; gap: 12px 24px;
+    border-bottom: 2px solid var(--ink); padding-bottom: 18px;
+  }
+  .mast h1 { font-size: clamp(26px, 4vw, 38px); margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+  .mast .sub { color: var(--muted); font-size: 15px; margin-top: 4px; }
+  .mast .meta { font-family: var(--mono); font-size: 12px; color: var(--faint); text-align: right; line-height: 1.7; }
+  .mast .meta b { color: var(--muted); font-weight: 600; }
+
+  /* ---- legend ---- */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 22px 0 8px;
+    font-family: var(--mono); font-size: 12px; color: var(--muted);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  /* ---- stack ---- */
+  .stack { display: flex; flex-direction: column; gap: 0; margin-top: 14px; }
+  .layer {
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--lc, var(--border-strong));
+    border-radius: 10px; padding: 18px 20px 20px;
+  }
+  .layer-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+  }
+  .layer-head h2 { font-size: 16px; margin: 0; letter-spacing: -0.01em; }
+  .tag {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 5px; white-space: nowrap;
+  }
+  .layer-note { color: var(--muted); font-size: 13.5px; margin: 0; }
+
+  .conn {
+    align-self: center; font-family: var(--mono); font-size: 12px;
+    color: var(--faint); padding: 9px 0; text-align: center; line-height: 1.4;
+  }
+  .conn b { color: var(--be); font-weight: 600; }
+  .conn .arrow { display: block; font-size: 15px; color: var(--border-strong); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .chip { border: 1px solid var(--border); background: var(--ground); border-radius: 8px; padding: 9px 11px; }
+  .chip .name { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--ink); }
+  .chip .desc { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .chip.accent { background: var(--accent-bg); border-color: transparent; }
+  .chip.accent .name { color: var(--accent); }
+
+  .col-split { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; }
+  @media (max-width: 720px) { .col-split { grid-template-columns: 1fr; } }
+
+  .subhead {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--faint); margin: 0 0 8px;
+  }
+
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 640px) { .duo { grid-template-columns: 1fr; } }
+
+  .ops {
+    margin-top: 26px; border: 1px dashed var(--border-strong);
+    border-radius: 10px; padding: 16px 20px; background: var(--ops-bg);
+  }
+  .ops .chip { background: var(--surface); }
+
+  /* ---- core features / flows ---- */
+  .features { margin-top: 36px; }
+  .features > .ftitle { font-size: 18px; letter-spacing: -0.01em; margin: 0 0 4px; }
+  .features > .fsub { color: var(--muted); font-size: 13.5px; margin: 0 0 16px; }
+
+  .feat {
+    background: var(--surface); border: 1px solid var(--border);
+    border-top: 3px solid var(--fc, var(--border-strong));
+    border-radius: 10px; padding: 18px 20px 20px;
+  }
+  .feat + .feat { margin-top: 14px; }
+  .feat-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .feat-h h3 { font-size: 15.5px; margin: 0; letter-spacing: -0.01em; }
+  .feat-desc { color: var(--muted); font-size: 13px; margin: 5px 0 0; }
+
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 2px; margin: 16px 0 4px; }
+  .node {
+    flex: 0 0 auto; width: 154px; background: var(--surface);
+    border: 1.5px solid var(--border-strong); border-radius: 8px; padding: 9px 11px;
+  }
+  .node .nt {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.02em; line-height: 1.25; color: var(--ink);
+  }
+  .node .nd { font-size: 10.5px; color: var(--muted); margin-top: 3px; line-height: 1.35; }
+  .node .nd code { font-family: var(--mono); font-size: 10px; color: var(--ink); }
+  .node.start { border-color: var(--fc); }
+  .node.start .nt { color: var(--fc); }
+  .node.decision { border-style: dashed; border-color: var(--fc); }
+  .node.ok { border-color: #16a34a; background: #f0fbf4; }
+  .node.ok .nt { color: #15803d; }
+  .node.bad { border-color: #dc2626; background: #fdf1f1; }
+  .node.bad .nt { color: #b91c1c; }
+
+  .arr {
+    flex: 0 0 auto; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; min-width: 36px;
+  }
+  .arr .al {
+    font-size: 8px; text-transform: uppercase; letter-spacing: 0.03em;
+    text-align: center; line-height: 1.1; color: var(--faint);
+    margin-bottom: 1px; max-width: 60px;
+  }
+  .arr .ah { font-size: 16px; line-height: 1; color: var(--border-strong); }
+
+  .branch { flex: 0 0 auto; display: flex; flex-direction: column; gap: 9px; }
+  .brow { display: flex; flex-wrap: wrap; align-items: center; gap: 9px 2px; }
+
+  @media (max-width: 900px) {
+    .flow { flex-direction: column; align-items: center; gap: 0; }
+    .flow .node { width: auto; max-width: 100%; }
+    .flow .arr {
+      flex-direction: row; justify-content: center; width: 100%;
+      min-width: 0; padding: 7px 0; gap: 7px;
+    }
+    .flow .arr .al { margin-bottom: 0; max-width: none; }
+    .flow .arr .ah { transform: rotate(90deg); }
+    .branch { width: auto; align-items: center; }
+    .brow { flex-direction: column; align-items: center; gap: 0; }
+  }
+
+  .detail-row { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .detail-row .lbl {
+    font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--faint); margin-right: 4px;
+  }
+  .pill {
+    font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 12px;
+    background: var(--ground); border: 1px solid var(--border); color: var(--muted); white-space: nowrap;
+  }
+  .pill.hot { background: var(--fc-bg); border-color: transparent; color: var(--fc); }
+
+  /* ---- booking wizard stepper ---- */
+  .wizard-wrap { margin-top: 18px; border-top: 1px dashed var(--border); padding-top: 16px; }
+  .wizard-cap { font-size: 12.5px; color: var(--muted); margin-bottom: 14px; }
+  .wizard-cap b { color: var(--ink); }
+  .steps { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  @media (max-width: 860px) { .steps { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 460px) { .steps { grid-template-columns: repeat(2, 1fr); } }
+  .step {
+    position: relative; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface); padding: 12px 11px 13px;
+  }
+  .step .num {
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--fc); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px;
+  }
+  .step .st { font-size: 12.5px; font-weight: 700; color: var(--ink); }
+  .step .sd { font-size: 10.5px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+  .step .sd code { font-family: var(--mono); font-size: 9.5px; color: var(--ink); }
+
+  /* ---- transform table (BE custom) ---- */
+  .xform { margin-top: 16px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .xform-h {
+    display: grid; grid-template-columns: 1fr 28px 1fr; gap: 0;
+    background: var(--ground); border-bottom: 1px solid var(--border);
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted);
+  }
+  .xform-h > div { padding: 8px 12px; }
+  .xform-h > div:nth-child(2) { text-align: center; }
+  .xrow {
+    display: grid; grid-template-columns: 1fr 28px 1fr; gap: 0;
+    border-bottom: 1px solid var(--border); align-items: center; font-size: 11.5px;
+  }
+  .xrow:last-child { border-bottom: none; }
+  .xrow > div { padding: 9px 12px; }
+  .xrow .raw { color: var(--muted); font-family: var(--mono); font-size: 10.5px; }
+  .xrow .mid { text-align: center; color: var(--be); font-size: 13px; }
+  .xrow .cooked { color: var(--ink); font-weight: 600; }
+  .xrow .cooked .badge {
+    display: inline-block; font-family: var(--mono); font-size: 8.5px; font-weight: 700;
+    color: var(--be); background: var(--be-bg); border-radius: 8px; padding: 1px 6px; margin-left: 6px;
+    text-transform: uppercase; letter-spacing: 0.03em; vertical-align: middle;
+  }
+
+  footer.note {
+    margin-top: 30px; font-size: 12.5px; color: var(--faint);
+    border-top: 1px solid var(--border); padding-top: 14px;
+  }
+  footer.note code { font-family: var(--mono); color: var(--muted); }
+</style>
+
+<div class="page">
+
+  <header class="mast">
+    <div>
+      <h1>Flight Booking — Bamboo Airways Integration</h1>
+      <div class="sub">Ticket-purchasing feature embedded into the company website · fullstack (FE + BE)</div>
+    </div>
+    <div class="meta">
+      <div><b>frontend</b> step-by-step booking flow</div>
+      <div><b>backend</b> adapter · Bamboo Airways API</div>
+      <div><b>role</b> built both FE &amp; BE</div>
+    </div>
+  </header>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--fe)"></i> Frontend</span>
+    <span><i class="dot" style="background:var(--be)"></i> Backend</span>
+    <span><i class="dot" style="background:var(--data)"></i> Data / cache</span>
+    <span><i class="dot" style="background:var(--ext)"></i> Bamboo Airways &amp; 3rd-party</span>
+    <span><i class="dot" style="background:var(--ops)"></i> DevOps</span>
+  </div>
+
+  <div class="stack">
+
+    <!-- CLIENTS -->
+    <section class="layer" style="--lc:#94a3b8">
+      <div class="layer-head">
+        <h2>Clients</h2>
+        <span class="tag" style="background:#eef1f5;color:var(--ops)">browser</span>
+      </div>
+      <div class="chips">
+        <div class="chip"><div class="name">Customers</div><div class="desc">search flights · pick fare · pay</div></div>
+        <div class="chip"><div class="name">Staff / Agents</div><div class="desc">book on behalf · manage orders</div></div>
+        <div class="chip"><div class="name">Admins</div><div class="desc">configure markup · track transactions</div></div>
+      </div>
+    </section>
+
+    <div class="conn"><span class="arrow">▼</span> HTTPS · company website</div>
+
+    <!-- FRONTEND -->
+    <section class="layer" style="--lc:var(--fe)">
+      <div class="layer-head">
+        <h2>Frontend — Booking Wizard</h2>
+        <span class="tag" style="background:var(--fe-bg);color:var(--fe)">step-by-step purchase flow</span>
+      </div>
+      <p class="layer-note" style="margin-bottom:14px">Guides the user through clear sequential steps — each step asks only for what it needs, validates before advancing, and keeps the order <code style="font-family:var(--mono)">state</code> alive throughout the booking session.</p>
+
+      <div class="col-split">
+        <div>
+          <p class="subhead">Screens by step</p>
+          <div class="grid" style="--accent:var(--fe);--accent-bg:var(--fe-bg)">
+            <div class="chip accent"><div class="name">search</div><div class="desc">origin/destination · dates · pax</div></div>
+            <div class="chip accent"><div class="name">select-flight</div><div class="desc">flight list · fare classes</div></div>
+            <div class="chip accent"><div class="name">passenger</div><div class="desc">passenger details</div></div>
+            <div class="chip accent"><div class="name">add-ons</div><div class="desc">baggage · seat selection</div></div>
+            <div class="chip accent"><div class="name">payment</div><div class="desc">payment gateway</div></div>
+            <div class="chip accent"><div class="name">confirm</div><div class="desc">e-ticket · booking ref</div></div>
+          </div>
+        </div>
+        <div>
+          <p class="subhead">Client-side handling</p>
+          <div class="chips">
+            <div class="chip"><div class="name">step state</div><div class="desc">persist data across steps</div></div>
+            <div class="chip"><div class="name">validation</div><div class="desc">block next on missing input</div></div>
+            <div class="chip"><div class="name">REST client</div><div class="desc">calls the backend API</div></div>
+            <div class="chip"><div class="name">price recalc</div><div class="desc">live price updates</div></div>
+            <div class="chip"><div class="name">session timer</div><div class="desc">hold seats for N minutes</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="conn">
+      <span class="arrow">▼ ▲</span>
+      <b>REST</b> — the frontend talks only to the company backend, never directly to Bamboo
+    </div>
+
+    <!-- BACKEND -->
+    <section class="layer" style="--lc:var(--be)">
+      <div class="layer-head">
+        <h2>Backend — Adapter / API Gateway</h2>
+        <span class="tag" style="background:var(--be-bg);color:var(--be)">customizes the Bamboo API for the company system</span>
+      </div>
+      <p class="layer-note" style="margin-bottom:14px">The backend sits in the middle: it <b>holds the keys</b> issued by Bamboo Airways, calls the airline API, then <b>customizes</b> the request/response to fit the website's buy/sell features (price markup, data filtering, aggregation, order management).</p>
+
+      <p class="subhead">Business modules</p>
+      <div class="grid" style="--accent:var(--be);--accent-bg:var(--be-bg)">
+        <div class="chip accent"><div class="name">bamboo-client</div><div class="desc">calls airline API · holds key/token</div></div>
+        <div class="chip accent"><div class="name">flight-search</div><div class="desc">search &amp; filter flights</div></div>
+        <div class="chip accent"><div class="name">pricing</div><div class="desc">markup · company service fees</div></div>
+        <div class="chip accent"><div class="name">booking</div><div class="desc">hold seats · issue tickets</div></div>
+        <div class="chip accent"><div class="name">payment</div><div class="desc">payment reconciliation</div></div>
+        <div class="chip accent"><div class="name">orders</div><div class="desc">store &amp; look up orders</div></div>
+      </div>
+
+      <div class="col-split" style="margin-top:16px">
+        <div>
+          <p class="subhead">Bamboo integration layer</p>
+          <div class="chips">
+            <div class="chip"><div class="name">key/credential</div><div class="desc">API key · token issued by airline</div></div>
+            <div class="chip"><div class="name">request mapper</div><div class="desc">build the exact params airline expects</div></div>
+            <div class="chip"><div class="name">response mapper</div><div class="desc">normalize into internal model</div></div>
+            <div class="chip"><div class="name">token refresh</div><div class="desc">auto-renew on expiry</div></div>
+          </div>
+        </div>
+        <div>
+          <p class="subhead">Cross-cutting</p>
+          <div class="chips">
+            <div class="chip"><div class="name">auth guard</div><div class="desc">protect endpoints</div></div>
+            <div class="chip"><div class="name">cache</div><div class="desc">cut down airline calls</div></div>
+            <div class="chip"><div class="name">retry / error</div><div class="desc">handle external failures</div></div>
+            <div class="chip"><div class="name">logging</div><div class="desc">transaction logs · debug</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="conn"><span class="arrow">▼ ▲</span> <b>Bamboo Airways API</b> (provisioned key) · payment gateway · email</div>
+
+    <!-- DATA + EXTERNAL -->
+    <div class="duo">
+      <section class="layer" style="--lc:var(--data)">
+        <div class="layer-head">
+          <h2>Data / cache</h2>
+          <span class="tag" style="background:var(--data-bg);color:var(--data)">stateful</span>
+        </div>
+        <div class="chips" style="--accent:var(--data);--accent-bg:var(--data-bg)">
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Database</div><div class="desc">orders · passengers · markup config</div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Cache</div><div class="desc">flight search results · Bamboo token</div></div>
+        </div>
+      </section>
+
+      <section class="layer" style="--lc:var(--ext)">
+        <div class="layer-head">
+          <h2>External services</h2>
+          <span class="tag" style="background:var(--ext-bg);color:var(--ext)">3rd-party</span>
+        </div>
+        <div class="chips" style="--accent:var(--ext);--accent-bg:var(--ext-bg)">
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Bamboo Airways API</div><div class="desc">search · pricing · hold · ticket issuance</div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Payment gateway · Email</div><div class="desc">collect payment · send e-ticket</div></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- DEVOPS -->
+    <section class="ops">
+      <div class="layer-head" style="margin-bottom:12px">
+        <h2 style="font-size:15px">DevOps &amp; operations</h2>
+        <span class="tag" style="background:#dfe4ea;color:var(--ops)">deploy · environments</span>
+      </div>
+      <div class="grid">
+        <div class="chip"><div class="name">env / secrets</div><div class="desc">Bamboo keys kept out of code</div></div>
+        <div class="chip"><div class="name">sandbox → prod</div><div class="desc">test against airline's sandbox</div></div>
+        <div class="chip"><div class="name">CI/CD</div><div class="desc">automated build · deploy</div></div>
+        <div class="chip"><div class="name">monitoring</div><div class="desc">watch API call failures</div></div>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="features">
+    <h2 class="ftitle">Two core parts of the project</h2>
+    <p class="fsub">How the frontend purchase flow connects to the backend Bamboo Airways integration layer.</p>
+
+    <!-- FEATURE 1: FE BOOKING WIZARD -->
+    <article class="feat" style="--fc:#2563eb; --fc-bg:#e8effd">
+      <div class="feat-h">
+        <h3>Frontend — step-by-step booking wizard</h3>
+        <span class="tag" style="background:#e8effd;color:#2563eb">step-by-step · multi-step form</span>
+      </div>
+      <p class="feat-desc">The user is guided one step at a time; each step must validate before advancing, and the full order state is preserved all the way through to ticket issuance.</p>
+
+      <div class="wizard-wrap">
+        <div class="wizard-cap">Example — a booking session moves through <b>6 steps</b>, each calling the backend to fetch data or confirm before moving on.</div>
+        <div class="steps">
+          <div class="step"><span class="num">1</span><div class="st">Search</div><div class="sd">origin/destination, dates, pax → <code>/search</code></div></div>
+          <div class="step"><span class="num">2</span><div class="st">Select flight</div><div class="sd">flight list + fare classes, marked-up price</div></div>
+          <div class="step"><span class="num">3</span><div class="st">Passenger</div><div class="sd">name, DOB, ID document</div></div>
+          <div class="step"><span class="num">4</span><div class="st">Add-ons</div><div class="sd">baggage, seat selection</div></div>
+          <div class="step"><span class="num">5</span><div class="st">Payment</div><div class="sd">payment gateway → hold seats</div></div>
+          <div class="step"><span class="num">6</span><div class="st">Confirm</div><div class="sd">issue ticket · booking ref (PNR)</div></div>
+        </div>
+      </div>
+
+      <div class="flow" style="margin-top:18px">
+        <div class="node start"><div class="nt">Current step</div><div class="nd">user enters data on one screen</div></div>
+        <div class="arr"><span class="al">Continue</span><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">Validate</div><div class="nd">complete &amp; valid?</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="branch">
+          <div class="brow">
+            <div class="node ok"><div class="nt">✓ Valid</div><div class="nd">save to order state → go to next step</div></div>
+            <div class="arr"><span class="ah">→</span></div>
+            <div class="node"><div class="nt">Call backend</div><div class="nd">fetch data / refresh price for next step</div></div>
+          </div>
+          <div class="brow">
+            <div class="node bad"><div class="nt">✕ Missing / invalid</div><div class="nd">show error, stay on the step</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">highlights</span>
+        <span class="pill hot">State persisted across steps</span>
+        <span class="pill hot">Validate before advancing</span>
+        <span class="pill hot">Live price updates</span>
+        <span class="pill">Seat-hold countdown</span>
+      </div>
+    </article>
+
+    <!-- FEATURE 2: BE BAMBOO INTEGRATION -->
+    <article class="feat" style="--fc:#0d9488; --fc-bg:#e3f4f1">
+      <div class="feat-h">
+        <h3>Backend — integrating &amp; customizing the Bamboo Airways API</h3>
+        <span class="tag" style="background:#e3f4f1;color:#0d9488">adapter · markup · response mapping</span>
+      </div>
+      <p class="feat-desc">The backend takes the Bamboo Airways keys, calls the airline API, then transforms the data to fit the website's buy/sell features — the frontend never touches the airline API directly.</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">FE request</div><div class="nd">calls internal endpoint <code>/api/...</code></div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Auth + key</div><div class="nd">attach Bamboo API key / token</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Call Bamboo</div><div class="nd">map to the exact params airline requires</div></div>
+        <div class="arr"><span class="al">raw response</span><span class="ah">→</span></div>
+        <div class="node"><div class="nt">Customize</div><div class="nd">markup price · filter · normalize model</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node ok"><div class="nt">Return to FE</div><div class="nd">clean data, tailored to company needs</div></div>
+      </div>
+
+      <div class="xform">
+        <div class="xform-h">
+          <div>Raw response from Bamboo</div>
+          <div>→</div>
+          <div>After backend customization</div>
+        </div>
+        <div class="xrow">
+          <div class="raw">baseFare, taxes, fees (separate)</div>
+          <div class="mid">→</div>
+          <div class="cooked">Final selling price <span class="badge">+ markup</span></div>
+        </div>
+        <div class="xrow">
+          <div class="raw">dozens of technical fields per flight</div>
+          <div class="mid">→</div>
+          <div class="cooked">Only fields the FE needs <span class="badge">filter</span></div>
+        </div>
+        <div class="xrow">
+          <div class="raw">airline-specific codes/format</div>
+          <div class="mid">→</div>
+          <div class="cooked">Unified internal model <span class="badge">map</span></div>
+        </div>
+        <div class="xrow">
+          <div class="raw">several separate calls</div>
+          <div class="mid">→</div>
+          <div class="cooked">One response with everything <span class="badge">aggregate</span></div>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">backend handles</span>
+        <span class="pill hot">Hold &amp; refresh key/token</span>
+        <span class="pill hot">Price markup by config</span>
+        <span class="pill hot">Data normalization</span>
+        <span class="pill">Cache search results</span>
+        <span class="pill">Retry on airline errors</span>
+        <span class="pill">Persist orders</span>
+      </div>
+    </article>
+  </section>
+
+  <footer class="note">
+    The frontend walks the user through a step-by-step <code>booking wizard</code> and talks only to the company backend;
+    the backend acts as an <code>adapter</code> — calling the <code>Bamboo Airways</code> API with the provisioned keys
+    and customizing the request/response (markup, filtering, normalization) to fit the website's buy/sell features.
+  </footer>
+
+</div>

@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F-ORDER — System Architecture</title>
+<meta name="description" content="Layered architecture of F-ORDER, a QR-based restaurant ordering platform: React + Vite SPA, Express + Mongoose API, MongoDB + Redis, Socket.IO realtime, and Cloudinary.">
+<style>
+  :root {
+    --ground: #f6f7f9;
+    --surface: #ffffff;
+    --ink: #16202e;
+    --muted: #5d6b7e;
+    --faint: #8c98a8;
+    --border: #e3e7ec;
+    --border-strong: #cdd4dd;
+
+    --fe: #4f46e5;      /* indigo - frontend */
+    --fe-bg: #eef0fe;
+    --be: #0d9488;      /* teal   - backend  */
+    --be-bg: #e3f4f1;
+    --data: #b45309;    /* amber  - data     */
+    --data-bg: #f9efe2;
+    --ext: #be185d;     /* rose   - external */
+    --ext-bg: #fbe9f1;
+    --ops: #475569;     /* slate  - devops   */
+    --ops-bg: #eef1f5;
+
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { max-width: 100%; overflow-x: hidden; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 1080px; margin: 0 auto; padding: 56px 28px 80px; }
+
+  /* ---- masthead ---- */
+  header.mast {
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    justify-content: space-between; gap: 12px 24px;
+    border-bottom: 2px solid var(--ink); padding-bottom: 18px;
+  }
+  .mast h1 { font-size: clamp(26px, 4vw, 38px); margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+  .mast .sub { color: var(--muted); font-size: 15px; margin-top: 4px; }
+  .mast .meta { font-family: var(--mono); font-size: 12px; color: var(--faint); text-align: right; line-height: 1.7; }
+  .mast .meta b { color: var(--muted); font-weight: 600; }
+
+  /* ---- legend ---- */
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 22px 0 8px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  /* ---- stack ---- */
+  .stack { display: flex; flex-direction: column; gap: 0; margin-top: 14px; }
+
+  .layer {
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--lc, var(--border-strong));
+    border-radius: 10px; padding: 18px 20px 20px;
+  }
+  .layer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .layer-head h2 { font-size: 16px; margin: 0; letter-spacing: -0.01em; }
+  .tag {
+    font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 5px; white-space: nowrap;
+  }
+  .layer-note { color: var(--muted); font-size: 13.5px; margin: 0; }
+  .layer-note code, .mast code, .chip code { font-family: var(--mono); }
+
+  /* connector arrows between layers */
+  .conn { align-self: center; font-family: var(--mono); font-size: 12px; color: var(--faint); padding: 9px 0; text-align: center; line-height: 1.4; }
+  .conn b { color: var(--be); font-weight: 600; }
+  .conn .arrow { display: block; font-size: 15px; color: var(--border-strong); }
+
+  /* chip grids */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .chip { border: 1px solid var(--border); background: var(--ground); border-radius: 8px; padding: 9px 11px; }
+  .chip .name { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--ink); }
+  .chip .desc { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .chip.accent { background: var(--accent-bg); border-color: transparent; }
+  .chip.accent .name { color: var(--accent); }
+
+  .col-split { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; }
+  @media (max-width: 720px) { .col-split { grid-template-columns: 1fr; } }
+
+  .subhead { font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--faint); margin: 0 0 8px; }
+
+  /* two-up for data + external */
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 640px) { .duo { grid-template-columns: 1fr; } }
+
+  /* devops footer */
+  .ops { margin-top: 26px; border: 1px dashed var(--border-strong); border-radius: 10px; padding: 16px 20px; background: var(--ops-bg); }
+  .ops .chip { background: var(--surface); }
+
+  /* ---- core features / flows ---- */
+  .features { margin-top: 36px; }
+  .features > .ftitle { font-size: 18px; letter-spacing: -0.01em; margin: 0 0 4px; }
+  .features > .fsub { color: var(--muted); font-size: 13.5px; margin: 0 0 16px; }
+
+  .feat { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--fc, var(--border-strong)); border-radius: 10px; padding: 18px 20px 20px; }
+  .feat + .feat { margin-top: 14px; }
+  .feat-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .feat-h h3 { font-size: 15.5px; margin: 0; letter-spacing: -0.01em; }
+  .feat-desc { color: var(--muted); font-size: 13px; margin: 5px 0 0; }
+  .feat-desc code, .detail-row code { font-family: var(--mono); }
+
+  /* flowchart - wraps to new rows, never scrolls horizontally */
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 2px; margin: 16px 0 4px; }
+  .node {
+    flex: 0 0 auto; width: 156px; background: var(--surface);
+    border: 1.5px solid var(--border-strong); border-radius: 8px; padding: 9px 11px;
+  }
+  .node .nt { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1.25; color: var(--ink); }
+  .node .nd { font-size: 10.5px; color: var(--muted); margin-top: 3px; line-height: 1.35; }
+  .node .nd code { font-family: var(--mono); font-size: 10px; color: var(--ink); }
+  .node.start { border-color: var(--fc); }
+  .node.start .nt { color: var(--fc); }
+  .node.decision { border-style: dashed; border-color: var(--fc); }
+  .node.ok { border-color: #16a34a; background: #f0fbf4; }
+  .node.ok .nt { color: #15803d; }
+  .node.bad { border-color: #dc2626; background: #fdf1f1; }
+  .node.bad .nt { color: #b91c1c; }
+
+  .arr { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 36px; }
+  .arr .al { font-size: 8px; text-transform: uppercase; letter-spacing: 0.03em; text-align: center; line-height: 1.1; color: var(--faint); margin-bottom: 1px; max-width: 62px; }
+  .arr .ah { font-size: 16px; line-height: 1; color: var(--border-strong); }
+
+  /* a decision splits into stacked outcome rows */
+  .branch { flex: 0 0 auto; display: flex; flex-direction: column; gap: 9px; }
+  .brow { display: flex; flex-wrap: wrap; align-items: center; gap: 9px 2px; }
+
+  /* narrow screens: stack the flow into a vertical column with DOWN arrows */
+  @media (max-width: 900px) {
+    .flow { flex-direction: column; align-items: center; gap: 0; }
+    .flow .node { width: auto; max-width: 100%; }
+    .flow .arr { flex-direction: row; justify-content: center; width: 100%; min-width: 0; padding: 7px 0; gap: 7px; }
+    .flow .arr .al { margin-bottom: 0; max-width: none; }
+    .flow .arr .ah { transform: rotate(90deg); }
+    .branch { width: auto; align-items: center; }
+    .brow { flex-direction: column; align-items: center; gap: 0; }
+  }
+  .detail-row { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .detail-row .lbl { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--faint); margin-right: 4px; }
+  .pill { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 12px; background: var(--ground); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+  .pill.hot { background: var(--fc-bg); border-color: transparent; color: var(--fc); }
+
+  /* status pipeline pills */
+  .pipe { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; }
+  .pipe .st { font-family: var(--mono); font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 6px; background: var(--fc-bg); color: var(--fc); }
+  .pipe .sep { color: var(--faint); font-size: 12px; }
+
+  /* mock-up grid */
+  .mock-wrap { margin-top: 18px; border-top: 1px dashed var(--border); padding-top: 14px; }
+  .mock-cap { font-size: 12.5px; color: var(--muted); margin-bottom: 12px; }
+  .mock-cap b { color: var(--ink); }
+  .mock-cap code { font-family: var(--mono); }
+  .mock { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.2fr); gap: 12px; align-items: stretch; }
+  @media (max-width: 720px) { .mock { grid-template-columns: 1fr; } }
+
+  .panel { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+  .panel-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11.5px; font-weight: 700; padding: 8px 11px; background: var(--ground); border-bottom: 1px solid var(--border); }
+  .panel-h .cnt { font-family: var(--mono); font-size: 10.5px; font-weight: 700; color: var(--fc); }
+
+  .mock-arr { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 42px; }
+  .mock-arr .al { font-size: 8px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--faint); text-align: center; line-height: 1.1; margin-bottom: 2px; }
+  .mock-arr .ah { font-size: 18px; color: var(--fc); }
+  @media (max-width: 720px) { .mock-arr .ah { transform: rotate(90deg); } }
+
+  /* phone-ish menu mock */
+  .phone { padding: 11px; }
+  .phone .qr { width: 64px; height: 64px; margin: 4px auto 10px; border-radius: 8px; background:
+      repeating-linear-gradient(0deg, var(--ink) 0 4px, transparent 4px 8px),
+      repeating-linear-gradient(90deg, var(--ink) 0 4px, transparent 4px 8px);
+    background-color: #fff; border: 3px solid var(--ink); }
+  .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 11px; }
+  .tile { border: 1px solid var(--border); border-radius: 8px; background: var(--ground); padding: 10px 11px; font-size: 11.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 44px; }
+  .tile.new { border-color: var(--fc); background: var(--fc-bg); color: var(--fc); }
+  .newtag { font-family: var(--mono); font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fc); background: var(--surface); border: 1px solid var(--fc); border-radius: 10px; padding: 1px 6px; white-space: nowrap; }
+
+  /* kitchen ticket mock */
+  .ticket { padding: 11px; display: flex; flex-direction: column; gap: 7px; }
+  .trow { display: flex; align-items: center; gap: 9px; font-size: 12px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--ground); }
+  .trow .q { font-family: var(--mono); font-weight: 700; color: var(--fc); }
+  .trow .badge { margin-left: auto; font-family: var(--mono); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 2px 7px; border-radius: 10px; }
+  .badge.pending { background: #f1f3f6; color: #5d6b7e; }
+  .badge.cooking { background: #fdebdc; color: #c2410c; }
+  .badge.served  { background: #e6f6ec; color: #15803d; }
+
+  /* dashboard KPIs + mini chart */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  @media (max-width: 560px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { border: 1px solid var(--border); border-radius: 8px; background: var(--ground); padding: 10px 11px; }
+  .kpi .k-v { font-size: 19px; font-weight: 700; color: var(--fc); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; line-height: 1.1; }
+  .kpi .k-l { font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 3px; }
+  .chartbox { margin-top: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 12px 14px 10px; overflow-x: auto; }
+  .chart-h { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 10px; }
+  .chart-h code { font-family: var(--mono); text-transform: none; }
+  .chart-plot { display: flex; align-items: flex-start; gap: 7px; width: fit-content; }
+  .y-axis { height: 96px; display: flex; flex-direction: column; justify-content: space-between; text-align: right; font-family: var(--mono); font-size: 8px; color: var(--faint); }
+  .plot-col { display: flex; flex-direction: column; gap: 4px; }
+  .bars { display: flex; align-items: flex-end; gap: 8px; height: 96px; padding: 0 9px; border-left: 1.5px solid var(--border-strong); border-bottom: 1.5px solid var(--border-strong); }
+  .bar { display: flex; align-items: flex-end; height: 100%; }
+  .bar i { width: 20px; background: var(--fc); border-radius: 3px 3px 0 0; opacity: 0.85; display: block; }
+  .xlabels { display: flex; gap: 8px; padding: 0 9px; }
+  .xlabels span { width: 20px; text-align: center; font-family: var(--mono); font-size: 8px; color: var(--faint); }
+
+  footer.note { margin-top: 30px; font-size: 12.5px; color: var(--faint); border-top: 1px solid var(--border); padding-top: 14px; }
+  footer.note code { font-family: var(--mono); color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="mast">
+    <div>
+      <h1>F-ORDER — System Architecture</h1>
+      <div class="sub">QR-based restaurant ordering platform · monorepo (<code>client/</code> + <code>server/</code>)</div>
+    </div>
+    <div class="meta">
+      <div><b>frontend</b> React 19 · Vite 6</div>
+      <div><b>backend</b> Express 4 · TypeScript</div>
+      <div><b>data</b> MongoDB 8 · Redis</div>
+    </div>
+  </header>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--fe)"></i> Frontend</span>
+    <span><i class="dot" style="background:var(--be)"></i> Backend</span>
+    <span><i class="dot" style="background:var(--data)"></i> Data stores</span>
+    <span><i class="dot" style="background:var(--ext)"></i> External services</span>
+    <span><i class="dot" style="background:var(--ops)"></i> DevOps</span>
+  </div>
+
+  <div class="stack">
+
+    <!-- CLIENTS -->
+    <section class="layer" style="--lc:#94a3b8">
+      <div class="layer-head">
+        <h2>Clients · 5 roles</h2>
+        <span class="tag" style="background:#eef1f5;color:var(--ops)">browser · mobile camera</span>
+      </div>
+      <div class="chips">
+        <div class="chip"><div class="name">Guest / User</div><div class="desc">scan table QR, browse menu, order, pay</div></div>
+        <div class="chip"><div class="name">Staff</div><div class="desc">watch tables &amp; active orders</div></div>
+        <div class="chip"><div class="name">Chef · Chef-head</div><div class="desc">kitchen queue, cook, assign chefs</div></div>
+        <div class="chip"><div class="name">Manager</div><div class="desc">menu, tables, staff, discounts, revenue</div></div>
+      </div>
+    </section>
+
+    <div class="conn"><span class="arrow">▼</span> HTTPS · single-page app (Vercel)</div>
+
+    <!-- FRONTEND -->
+    <section class="layer" style="--lc:var(--fe)">
+      <div class="layer-head">
+        <h2>Frontend — React SPA (Vite)</h2>
+        <span class="tag" style="background:var(--fe-bg);color:var(--fe)">dev :5173 · createBrowserRouter</span>
+      </div>
+      <p class="layer-note" style="margin-bottom:14px">Role-split layouts guarded by <code>ProtectedRoute</code> / <code>ProtectedRouteRes</code> (token + <code>allowedRoles</code>), plus <code>RequireTable</code> for the ordering flow. Data via <b>RTK Query</b> with a re-auth base query; realtime via Socket.IO.</p>
+
+      <div class="col-split">
+        <div>
+          <p class="subhead">Routes &amp; layouts</p>
+          <div class="grid" style="--accent:var(--fe);--accent-bg:var(--fe-bg)">
+            <div class="chip accent"><div class="name">auth</div><div class="desc">login/admin · login/customer · :slug/check · register</div></div>
+            <div class="chip accent"><div class="name">user</div><div class="desc">scan · menu · menu/:id · cart · ordered</div></div>
+            <div class="chip accent"><div class="name">admin</div><div class="desc">dashboard · manage-tables · foods · staffs · revenues · discounts</div></div>
+            <div class="chip accent"><div class="name">chef</div><div class="desc">confirm-order · table · duplicate-food · history</div></div>
+            <div class="chip accent"><div class="name">staff</div><div class="desc">staff/show-table</div></div>
+          </div>
+        </div>
+        <div>
+          <p class="subhead">Client libraries</p>
+          <div class="chips">
+            <div class="chip"><div class="name">Redux Toolkit</div><div class="desc">store + 5 slices</div></div>
+            <div class="chip"><div class="name">RTK Query</div><div class="desc">REST + cache tags</div></div>
+            <div class="chip"><div class="name">redux-persist</div><div class="desc">auth in localStorage</div></div>
+            <div class="chip"><div class="name">socket.io-client</div><div class="desc">realtime</div></div>
+            <div class="chip"><div class="name">react-router 7</div><div class="desc">routing + guards</div></div>
+            <div class="chip"><div class="name">react-chartjs-2</div><div class="desc">chart.js dashboards</div></div>
+            <div class="chip"><div class="name">html5-qrcode</div><div class="desc">table QR scanner</div></div>
+            <div class="chip"><div class="name">i18next</div><div class="desc">vi · en · ja · ko · zh</div></div>
+            <div class="chip"><div class="name">HeroUI · Radix</div><div class="desc">UI primitives</div></div>
+            <div class="chip"><div class="name">react-hook-form · yup</div><div class="desc">forms</div></div>
+            <div class="chip"><div class="name">Tailwind 3</div><div class="desc">styling</div></div>
+            <div class="chip"><div class="name">framer-motion · sonner</div><div class="desc">motion · toasts</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="conn">
+      <span class="arrow">▼ ▲</span>
+      <b>REST</b> (RTK Query <code>fetchBaseQuery</code> → <code>VITE_API_URL</code>, Bearer JWT, auto-refresh)
+      &nbsp;·&nbsp; <b>WebSocket</b> (Socket.IO → <code>VITE_SOCKET_URL</code>, server-pushed events)
+    </div>
+
+    <!-- BACKEND -->
+    <section class="layer" style="--lc:var(--be)">
+      <div class="layer-head">
+        <h2>Backend — Express + TypeScript API</h2>
+        <span class="tag" style="background:var(--be-bg);color:var(--be)">:8000 · REST + WS</span>
+      </div>
+      <p class="layer-note" style="margin-bottom:14px">Layered DI architecture wired in <code>routes/index.ts</code>: <b>Routes → Controllers → Services → Repositories → Mongoose models</b>. Each route mounts <code>authMiddleware</code> (JWT) + <code>authorizeRoles([...])</code> (RBAC).</p>
+
+      <p class="subhead">Route groups · controllers <code style="text-transform:none">src/routes</code></p>
+      <div class="grid" style="--accent:var(--be);--accent-bg:var(--be-bg)">
+        <div class="chip accent"><div class="name">/auth</div><div class="desc">signup · login · refresh-token · logout · change-password</div></div>
+        <div class="chip accent"><div class="name">/orders</div><div class="desc">create-update-order · update-status · by table/user</div></div>
+        <div class="chip accent"><div class="name">/kitchens</div><div class="desc">queue · update-status · assign-chef · my-items</div></div>
+        <div class="chip accent"><div class="name">/tables</div><div class="desc">get-all · create · delete</div></div>
+        <div class="chip accent"><div class="name">/menu-item</div><div class="desc">CRUD + edit</div></div>
+        <div class="chip accent"><div class="name">/categories</div><div class="desc">CRUD</div></div>
+        <div class="chip accent"><div class="name">/discounts</div><div class="desc">codes · create · update · delete</div></div>
+        <div class="chip accent"><div class="name">/revenues</div><div class="desc">daily · monthly · annual · best-sales · staff</div></div>
+        <div class="chip accent"><div class="name">/uploads</div><div class="desc">staff · food (multer)</div></div>
+        <div class="chip accent"><div class="name">/user</div><div class="desc">accounts</div></div>
+      </div>
+
+      <div class="col-split" style="margin-top:16px">
+        <div>
+          <p class="subhead">Cross-cutting <code style="text-transform:none">src/middleware · common</code></p>
+          <div class="chips">
+            <div class="chip"><div class="name">authMiddleware</div><div class="desc">jsonwebtoken verify</div></div>
+            <div class="chip"><div class="name">authorizeRoles</div><div class="desc">RBAC guard</div></div>
+            <div class="chip"><div class="name">BaseRepository</div><div class="desc">generic CRUD</div></div>
+            <div class="chip"><div class="name">DTOs</div><div class="desc">response shaping</div></div>
+          </div>
+        </div>
+        <div>
+          <p class="subhead">Platform services</p>
+          <div class="chips">
+            <div class="chip"><div class="name">Socket.IO</div><div class="desc">getIo() gateway</div></div>
+            <div class="chip"><div class="name">bcryptjs</div><div class="desc">password hashing</div></div>
+            <div class="chip"><div class="name">qrcode</div><div class="desc">table QR generation</div></div>
+            <div class="chip"><div class="name">multer</div><div class="desc">image uploads</div></div>
+            <div class="chip"><div class="name">express-handlebars</div><div class="desc">.hbs views</div></div>
+            <div class="chip"><div class="name">morgan · cors · cookie-parser</div><div class="desc">HTTP plumbing</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="conn"><span class="arrow">▼</span> Mongoose 8 ODM (models · embedded sub-docs · transactions) &nbsp;·&nbsp; ioredis client</div>
+
+    <!-- DATA + EXTERNAL -->
+    <div class="duo">
+      <section class="layer" style="--lc:var(--data)">
+        <div class="layer-head">
+          <h2>Data stores</h2>
+          <span class="tag" style="background:var(--data-bg);color:var(--data)">stateful</span>
+        </div>
+        <div class="chips" style="--accent:var(--data);--accent-bg:var(--data-bg)">
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">MongoDB 8 · Atlas</div><div class="desc">primary DB via Mongoose · <code>DATABASE_URI</code></div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Collections</div><div class="desc">User · Order (OrderItem[]) · Table · MenuItem · Category · KitchenQueue · Discount · Payment · Revenue · Review · Inventory · RecipeIngredient</div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Redis · ioredis</div><div class="desc">client configured · <code>REDIS_URL</code> :6379</div></div>
+        </div>
+      </section>
+
+      <section class="layer" style="--lc:var(--ext)">
+        <div class="layer-head">
+          <h2>External services</h2>
+          <span class="tag" style="background:var(--ext-bg);color:var(--ext)">3rd-party</span>
+        </div>
+        <div class="chips" style="--accent:var(--ext);--accent-bg:var(--ext-bg)">
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Cloudinary</div><div class="desc">food &amp; staff images + table QR codes (SHA-256 dedup, folders: Food / Staff / qr_codes)</div></div>
+          <div class="chip accent" style="flex:1 1 100%"><div class="name">Mobile camera</div><div class="desc">html5-qrcode scanner (facingMode: environment)</div></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- DEVOPS -->
+    <section class="ops">
+      <div class="layer-head" style="margin-bottom:12px">
+        <h2 style="font-size:15px">DevOps &amp; delivery</h2>
+        <span class="tag" style="background:#dfe4ea;color:var(--ops)">GitHub Actions · deploy hooks</span>
+      </div>
+      <div class="grid">
+        <div class="chip"><div class="name">GitHub Actions</div><div class="desc">build-server · build-client · deploy (Node 22)</div></div>
+        <div class="chip"><div class="name">Render</div><div class="desc">server deploy hook (curl POST)</div></div>
+        <div class="chip"><div class="name">Vercel</div><div class="desc">client deploy hook (curl POST)</div></div>
+        <div class="chip"><div class="name">Railway</div><div class="desc">API host referenced (API.txt · .env)</div></div>
+        <div class="chip"><div class="name">TypeScript · tsc</div><div class="desc">server build · client tsc -b + vite</div></div>
+        <div class="chip"><div class="name">nodemon · ts-node</div><div class="desc">dev server + seed script</div></div>
+        <div class="chip"><div class="name">ESLint</div><div class="desc">client lint</div></div>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="features">
+    <h2 class="ftitle">Core features</h2>
+    <p class="fsub">Four standout business flows (beyond CRUD) and how each travels through the architecture layers. Every label below is taken from real code — route paths, enum values, Socket.IO event names, class/function identifiers.</p>
+
+    <!-- FEATURE 1: SCAN-TO-ORDER -->
+    <article class="feat" style="--fc:#7c3aed; --fc-bg:#f1ebfd">
+      <div class="feat-h">
+        <h3>Scan-to-order — table QR opens the menu</h3>
+        <span class="tag" style="background:#f1ebfd;color:#7c3aed">html5-qrcode · RequireTable guard</span>
+      </div>
+      <p class="feat-desc">Each table's <code>pre("save")</code> hook builds a slug and a QR encoding <code>${URL_CLIENT}/${slug}/check</code> (uploaded to Cloudinary). A guest scans it with <code>Html5Qrcode</code>; <code>CheckPage</code> resolves the table, saves it to Redux, and the ordering routes stay locked behind <code>RequireTable</code> until a table is set.</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">Guest scans QR</div><div class="nd"><code>QrScanner</code> · facingMode <code>environment</code></div></div>
+        <div class="arr"><span class="al">decoded URL</span><span class="ah">→</span></div>
+        <div class="node"><div class="nt">CheckPage</div><div class="nd">route <code>/:slug/check</code> · <code>useGetAllTablesQuery()</code></div></div>
+        <div class="arr"><span class="al">find by slug</span><span class="ah">→</span></div>
+        <div class="node"><div class="nt">saveTableInfo</div><div class="nd">Redux <code>tableSlice</code> · clears old cart/order</div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="branch">
+          <div class="brow">
+            <div class="node decision"><div class="nt">Logged in as user / guest?</div><div class="nd">token + role check</div></div>
+            <div class="arr"><span class="al">yes</span><span class="ah">→</span></div>
+            <div class="node ok"><div class="nt">✓ Go to /menu</div><div class="nd"><code>RequireTable</code> passes → browse &amp; add to cart</div></div>
+          </div>
+          <div class="brow">
+            <div class="node"><div class="nt">no</div><div class="nd">show login / register choice</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">order submit</span>
+        <span class="pill hot">POST /orders/create-update-order</span>
+        <span class="pill">Mongo session + transaction</span>
+        <span class="pill">creates KitchenQueue rows</span>
+        <span class="pill">Table → OCCUPIED</span>
+      </div>
+
+      <div class="mock-wrap">
+        <div class="mock-cap">Example — guest scans <b>Table 7</b>'s QR; <code>CheckPage</code> matches the slug and the menu opens for that table.</div>
+        <div class="mock">
+          <div class="panel">
+            <div class="panel-h"><span>◢ Scan table QR</span><span class="cnt">/table-7/check</span></div>
+            <div class="phone">
+              <div class="qr"></div>
+              <div class="tile" style="justify-content:center">Table 7 · AVAILABLE</div>
+            </div>
+          </div>
+          <div class="mock-arr"><span class="al">resolve slug</span><span class="ah">→</span></div>
+          <div class="panel">
+            <div class="panel-h"><span>▦ Menu · Table 7</span><span class="cnt">RequireTable ✓</span></div>
+            <div class="tiles">
+              <div class="tile">Appetizers</div>
+              <div class="tile">Main Dishes</div>
+              <div class="tile">Beverages</div>
+              <div class="tile new">Add to cart <span class="newtag">NEW</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- FEATURE 2: KITCHEN QUEUE / ORDER LIFECYCLE -->
+    <article class="feat" style="--fc:#ea580c; --fc-bg:#fbe7da">
+      <div class="feat-h">
+        <h3>Kitchen queue &amp; live order lifecycle</h3>
+        <span class="tag" style="background:#fbe7da;color:#ea580c">Socket.IO · KitchenQueue · FoodStatus</span>
+      </div>
+      <p class="feat-desc">On submit, <code>OrderService.createOrUpdateOrder()</code> writes each item into the <code>KitchenQueue</code> collection. The chef-head assigns a chef; chefs advance each item's <code>FoodStatus</code>; the order's <code>TableOrderStatus</code> transitions in step. Every change is broadcast over Socket.IO and clients refetch.</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">Order created</div><div class="nd"><code>createOrUpdateOrder</code> → emit <code>orderSentToKitchen</code></div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="node"><div class="nt">KitchenQueue</div><div class="nd">items at <code>FoodStatus.PENDING</code></div></div>
+        <div class="arr"><span class="al">chef-head</span><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">assign-chef-cooking</div><div class="nd"><code>PATCH /kitchens/assign-chef-cooking</code> → emit <code>chefAssigned</code></div></div>
+        <div class="arr"><span class="ah">→</span></div>
+        <div class="branch">
+          <div class="brow">
+            <div class="node"><div class="nt">Chef cooks</div><div class="nd"><code>PATCH /kitchens/update-status</code> → emit <code>orderItemStatusUpdated</code></div></div>
+            <div class="arr"><span class="al">all served</span><span class="ah">→</span></div>
+            <div class="node ok"><div class="nt">✓ COMPLETED</div><div class="nd">bill paid → <code>updateRevenue()</code> · emit <code>orderStatusChanged</code></div></div>
+          </div>
+          <div class="brow">
+            <div class="node bad"><div class="nt">✕ CANCELLED</div><div class="nd"><code>handleCancelledOrder</code> · table freed</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipe">
+        <span class="lbl" style="font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--faint)">TableOrderStatus</span>
+        <span class="st">PENDING</span><span class="sep">→</span>
+        <span class="st">CONFIRMED</span><span class="sep">→</span>
+        <span class="st">PREPARING</span><span class="sep">→</span>
+        <span class="st">ALL_SERVED</span><span class="sep">→</span>
+        <span class="st">BILL_REQUESTED</span><span class="sep">→</span>
+        <span class="st">COMPLETED</span>
+      </div>
+      <div class="detail-row">
+        <span class="lbl">FoodStatus (per item)</span>
+        <span class="pill">PENDING</span><span class="pill">PROCESSING</span><span class="pill">COOKING</span><span class="pill">COMPLETED</span><span class="pill">SERVED</span>
+      </div>
+      <div class="detail-row">
+        <span class="lbl">socket events</span>
+        <span class="pill hot">orderSentToKitchen</span>
+        <span class="pill hot">chefAssigned</span>
+        <span class="pill hot">orderItemStatusUpdated</span>
+        <span class="pill hot">kitchenStatusUpdated</span>
+        <span class="pill hot">orderStatusChanged</span>
+        <span class="pill hot">tableStatusChanged</span>
+      </div>
+
+      <div class="mock-wrap">
+        <div class="mock-cap">Chef-head's queue (<code>ReceiveListFood</code>) — items advance through <b>FoodStatus</b>; the screen refetches on each socket push.</div>
+        <div class="panel">
+          <div class="panel-h"><span>🍳 Kitchen queue · Table 7</span><span class="cnt">3 items</span></div>
+          <div class="ticket">
+            <div class="trow"><span class="q">×2</span> Beef Pho <span class="badge served">SERVED</span></div>
+            <div class="trow"><span class="q">×1</span> Fried Spring Rolls <span class="badge cooking">COOKING</span></div>
+            <div class="trow"><span class="q">×1</span> Iced Milk Coffee <span class="badge pending">PENDING</span></div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- FEATURE 3: REVENUE DASHBOARD -->
+    <article class="feat" style="--fc:#047857; --fc-bg:#e6f4ef">
+      <div class="feat-h">
+        <h3>Manager revenue dashboard &amp; analytics</h3>
+        <span class="tag" style="background:#e6f4ef;color:#047857">AdminService aggregation · chart.js</span>
+      </div>
+      <p class="feat-desc">Manager-only <code>/revenues/*</code> endpoints aggregate the <code>Revenue</code> collection (MongoDB <code>aggregate</code>) into KPIs and time series. The dashboard renders them with <code>react-chartjs-2</code>: <code>RevenueChart</code> (annual line), <code>FiguresPostChart</code> (monthly-orders bar) and <code>TopDishFavourite</code> (best-sales table).</p>
+
+      <div class="flow">
+        <div class="node start"><div class="nt">DashboardPage</div><div class="nd">role <code>manager</code> only</div></div>
+        <div class="arr"><span class="al">RTK Query</span><span class="ah">→</span></div>
+        <div class="node decision"><div class="nt">Role guard</div><div class="nd"><code>authorizeRoles</code> <code>(["manager"])</code> on every <code>/revenues</code> route</div></div>
+        <div class="arr"><span class="al">allowed</span><span class="ah">→</span></div>
+        <div class="node"><div class="nt">AdminService</div><div class="nd"><code>getRevenueForYear</code> · <code>getOrderForMonth</code> · <code>getBestSales</code></div></div>
+        <div class="arr"><span class="al">aggregate</span><span class="ah">→</span></div>
+        <div class="node ok"><div class="nt">✓ Charts render</div><div class="nd">KPIs · line · bar · top dishes</div></div>
+      </div>
+
+      <div class="detail-row">
+        <span class="lbl">endpoints</span>
+        <span class="pill">/revenues/total</span>
+        <span class="pill">/revenues/annual</span>
+        <span class="pill">/revenues/order-monthly</span>
+        <span class="pill">/revenues/best-sales</span>
+        <span class="pill">/revenues/daily</span>
+      </div>
+
+      <div class="mock-wrap">
+        <div class="mock-cap">Live dashboard — KPIs from <code>/revenues/total</code> plus a monthly-orders bar chart from <code>getOrderForMonth(year)</code>.</div>
+
+        <div class="kpi-row">
+          <div class="kpi"><div class="k-v">₫48.6M</div><div class="k-l">Total revenue</div></div>
+          <div class="kpi"><div class="k-v">312</div><div class="k-l">Total orders</div></div>
+          <div class="kpi"><div class="k-v">23</div><div class="k-l">Menu items</div></div>
+          <div class="kpi"><div class="k-v">9</div><div class="k-l">Staff</div></div>
+        </div>
+
+        <div class="chartbox">
+          <div class="chart-h">Monthly orders · 2026 — <code>getOrderForMonth(year)</code> → FiguresPostChart</div>
+          <div class="chart-plot">
+            <div class="y-axis"><span>40</span><span>30</span><span>20</span><span>10</span><span>0</span></div>
+            <div class="plot-col">
+              <div class="bars">
+                <div class="bar"><i style="height:42%"></i></div>
+                <div class="bar"><i style="height:58%"></i></div>
+                <div class="bar"><i style="height:35%"></i></div>
+                <div class="bar"><i style="height:70%"></i></div>
+                <div class="bar"><i style="height:50%"></i></div>
+                <div class="bar"><i style="height:82%"></i></div>
+                <div class="bar"><i style="height:64%"></i></div>
+                <div class="bar"><i style="height:40%"></i></div>
+                <div class="bar"><i style="height:55%"></i></div>
+                <div class="bar"><i style="height:75%"></i></div>
+                <div class="bar"><i style="height:46%"></i></div>
+                <div class="bar"><i style="height:30%"></i></div>
+              </div>
+              <div class="xlabels">
+                <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <footer class="note">
+    Monorepo: <code>client/</code> (React + Vite SPA) talks to <code>server/</code> (Express + TypeScript) over <code>REST</code> (RTK Query, Bearer JWT with silent refresh) and <code>Socket.IO</code>.
+    The server persists to <code>MongoDB</code> via Mongoose, keeps a <code>Redis</code> (ioredis) client, and offloads images &amp; table QR codes to <code>Cloudinary</code>.
+    Built &amp; deployed by GitHub Actions to <code>Render</code> (server) and <code>Vercel</code> (client).
+  </footer>
+
+</div>
+</body>
+</html>
